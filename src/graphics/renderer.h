@@ -1,7 +1,6 @@
 #pragma once
 
 #include <glad/glad.h>
-#include <glm/glm.hpp>
 
 class Renderer {
     int screen_width, screen_height;

@@ -39,6 +39,7 @@ add_custom_command(TARGET main PRE_BUILD
 
 # Includes
 target_include_directories(main PRIVATE "./src/")
+target_precompile_headers(main PRIVATE "./src/pch.h")
 
 # Glob all source files
 file(GLOB_RECURSE SOURCES

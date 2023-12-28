@@ -1,0 +1,5 @@
+# binary directory (build output)
+bin
+
+# visual studio
+.vs

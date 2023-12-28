@@ -1,0 +1,9 @@
+{
+    "cmake.configureOnOpen": false,
+    "cmake.options.advanced": {
+        "configurePreset": {
+            "statusBarVisibility": "visible"
+        }
+    },
+    "C_Cpp.autoAddFileAssociations": false,
+}

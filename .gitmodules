@@ -1,0 +1,12 @@
+[submodule "sdl"]
+	path = extern/sdl
+	url = https://github.com/libsdl-org/SDL.git
+	shallow = true
+[submodule "glm"]
+	path = extern/glm
+	url = https://github.com/g-truc/glm.git
+	shallow = true
+[submodule "imgui"]
+	path = extern/imgui
+	url = https://github.com/ocornut/imgui.git
+	shallow = true

@@ -41,6 +41,8 @@ int main(int argc, char* argv[]) {
 
     int version = gladLoadGL();
 
+    printf("fps: %f\n", 1.0f / (2073600.0f * 9.81e-10f));
+
     imgui_init(window, context);
 
     SDL_SetRelativeMouseMode(SDL_TRUE);
@@ -101,7 +103,7 @@ int main(int argc, char* argv[]) {
             }
         }
 
-        pitch = std::max(std::min(pitch - mdy * dt * 4.0f, 89.0f), -89.0f);
+        pitch = max(min(pitch - mdy * dt * 4.0f, 89.0f), -89.0f);
         yaw += mdx * dt * 4.0f;
 
         glm::vec3 cam_dir = glm::vec3(0);

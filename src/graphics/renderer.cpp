@@ -2,6 +2,7 @@
 
 #include <glm/ext/matrix_clip_space.hpp>
 #include <glm/ext/matrix_transform.hpp>
+#include <imgui.h>
 
 Renderer::Renderer(int screen_width, int screen_height)
     : screen_width(screen_width),
@@ -14,6 +15,13 @@ Renderer::Renderer(int screen_width, int screen_height)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glBindTexture(GL_TEXTURE_2D, 0);
+
+    std::vector<VoxelVolume> vvv;
+    vvv.emplace_back(glm::vec3(0.0f), glm::ivec3(8), glm::vec3(0.0f));
+    vvv.emplace_back(glm::vec3(4.0f, 0.0f, 0.0f), glm::ivec3(8), glm::vec3(0.0f));
+    vvv.emplace_back(glm::vec3(-4.0f, 0.0f, 0.0f), glm::ivec3(8), glm::vec3(0.0f));
+
+    bvh = Bvh(vvv.size(), vvv);
 }
 
 Renderer::~Renderer() { delete[] buffer; }
@@ -102,11 +110,17 @@ static uint32_t lerp_color(uint32_t color1, uint32_t color2, float t) {
     return rb | ga;
 }
 
-static GLuint trace(const glm::vec4& ro, const glm::vec3& rd, const Box& box,
-                    const glm::mat4& box_model) {
-    float dist = ray_to_obb(ro, rd, box, box_model);
-    if (dist > 0.0f) {
-        return lerp_color(0xFFFFFFFF, 0x000000FF, dist / 1000.0f);
+//static GLuint trace(const glm::vec4& ro, const glm::vec3& rd, const Box& box,
+//                    const glm::mat4& box_model) {
+//    float dist = ray_to_obb(ro, rd, box, box_model);
+//    if (dist > 0.0f) {
+//        return lerp_color(0xFFFFFFFF, 0x000000FF, dist / 1000.0f);
+//    }
+//    return 0x101010FF;
+//}
+static GLuint trace(const glm::vec4& ro, const glm::vec3& rd, const Bvh& bvh) {
+    if (bvh.intersect(ro, rd)) {
+        return 0xFF0000FF;
     }
     return 0x101010FF;
 }
@@ -137,9 +151,83 @@ void Renderer::render(float dt, float time, glm::vec3 cam_pos, glm::vec3 cam_dir
             /* NOTE: this normalize is very expensive! */
             glm::vec3 ray_dir = glm::normalize(ray_end_world - cam_pos_4);
 
-            buffer[x + y * screen_width] = trace(cam_pos_4, ray_dir, box, box_model);
+            // buffer[x + y * screen_width] = trace(cam_pos_4, ray_dir, box, box_model);
+            buffer[x + y * screen_width] = trace(cam_pos_4, ray_dir, bvh);
         }
     }
+
+    draw_aabb(glm::vec3(5.0f), glm::vec3(10.0f), 0x00FF00FF, view, proj);
+
+    //{
+    //    glm::vec3 p0 = {5.0f, 5.0f, 5.0f}, p1 = {10.0f, 5.0f, 5.0f};
+    //    draw_world_line(p0, p1, 0xFF0000FF, view, proj);
+    //}
+    //{
+    //    glm::vec3 p0 = {5.0f, 5.0f, 5.0f}, p1 = {5.0f, 10.0f, 5.0f};
+    //    draw_world_line(p0, p1, 0xFF0000FF, view, proj);
+    //}
+    //{
+    //    glm::vec3 p0 = {5.0f, 5.0f, 5.0f}, p1 = {5.0f, 5.0f, 10.0f};
+    //    draw_world_line(p0, p1, 0xFF0000FF, view, proj);
+    //}
+}
+
+void Renderer::draw_world_line(glm::vec3 p0, glm::vec3 p1, u32 c, glm::mat4 view, glm::mat4 proj) {
+    glm::vec3 pp0 = glm::project(p0, view, proj, glm::vec4(0, 0, screen_width, screen_height));
+    glm::vec3 pp1 = glm::project(p1, view, proj, glm::vec4(0, 0, screen_width, screen_height));
+
+    draw_line(glm::ivec2(pp0), glm::ivec2(pp1), c);
+}
+
+void Renderer::draw_line(glm::ivec2 p0, glm::ivec2 p1, u32 c) {
+    int dx = abs(p1.x - p0.x);
+    int sx = p0.x < p1.x ? 1 : -1;
+    int dy = -abs(p1.y - p0.y);
+    int sy = p0.y < p1.y ? 1 : -1;
+    int error = dx + dy;
+
+    for (;;) {
+        if (p0.x >= 0 && p0.y >= 0 && p0.x < screen_width && p0.y < screen_height)
+            buffer[p0.x + p0.y * screen_width] = c;
+
+        if (p0.x == p1.x && p0.y == p1.y) break;
+        int e2 = 2 * error;
+        if (e2 >= dy) {
+            if (p0.x == p1.x) break;
+            error += dy;
+            p0.x += sx;
+        }
+        if (e2 <= dx) {
+            if (p0.y == p1.y) break;
+            error += dx;
+            p0.y += sy;
+        }
+    }
+}
+
+void Renderer::draw_aabb(glm::vec3 min, glm::vec3 max, u32 c, glm::mat4 view, glm::mat4 proj) {
+    glm::vec3 p0 = min;
+    glm::vec3 p1 = glm::vec3(min.x, min.y, max.z);
+    glm::vec3 p2 = glm::vec3(min.x, max.y, min.z);
+    glm::vec3 p3 = glm::vec3(max.x, min.y, min.z);
+    glm::vec3 p4 = max;
+    glm::vec3 p5 = glm::vec3(max.x, max.y, min.z);
+    glm::vec3 p6 = glm::vec3(max.x, min.y, max.z);
+    glm::vec3 p7 = glm::vec3(min.x, max.y, max.z);
+
+    draw_world_line(p0, p1, c, view, proj);
+    draw_world_line(p0, p2, c, view, proj);
+    draw_world_line(p0, p3, c, view, proj);
+    draw_world_line(p1, p6, c, view, proj);
+    draw_world_line(p3, p6, c, view, proj);
+    draw_world_line(p1, p7, c, view, proj);
+
+    draw_world_line(p4, p5, c, view, proj);
+    draw_world_line(p4, p6, c, view, proj);
+    draw_world_line(p4, p7, c, view, proj);
+    draw_world_line(p5, p2, c, view, proj);
+    draw_world_line(p7, p2, c, view, proj);
+    draw_world_line(p5, p3, c, view, proj);
 }
 
 GLuint Renderer::get_buf() {

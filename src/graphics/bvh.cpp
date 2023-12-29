@@ -143,7 +143,6 @@ bool Bvh::intersect(const glm::vec3& ro, const glm::vec3& rd, u32 node_idx) cons
     if (!ray_to_aabb(ro, rd, node.bbmin, node.bbmax)) return false;
     if (node.left_child == 0 && node.right_child == 0) {
         for (u32 i = 0; i < node.prim_count; i++) {
-            // TODO: intersect with the primitives.
             const VoxelVolume& prim = prims[node.first_prim + i];
             if (ray_to_aabb(ro, rd, prim.min, prim.max)) {
                 return true;

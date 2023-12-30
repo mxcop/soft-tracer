@@ -44,3 +44,8 @@ target_include_directories(imgui
     PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/sdl/include
 )
 target_link_libraries(main PRIVATE imgui)
+
+# BENCHMARK
+# https://github.com/google/benchmark
+# set(BENCHMARK_DOWNLOAD_DEPENDENCIES ON CACHE BOOL "" FORCE)
+# add_subdirectory("../extern/benchmark")

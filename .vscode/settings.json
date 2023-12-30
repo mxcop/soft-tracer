@@ -6,6 +6,9 @@
         },
         "buildPreset": {
             "statusBarVisibility": "visible"
+        },
+        "launchTarget": {
+            "statusBarVisibility": "visible"
         }
     },
     "C_Cpp.autoAddFileAssociations": false,

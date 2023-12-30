@@ -5,8 +5,7 @@
 VoxelVolume::VoxelVolume(glm::vec3 pos, glm::ivec3 size, glm::vec3 rot)
     : pos(pos), size(size), rot(rot) {
     glm::vec3 half_size = (glm::vec3(size) / VOXELS_PER_UNIT) / 2.0f;
-    min = pos - half_size;
-    max = pos + half_size;
+    aabb = AABB(pos - half_size, pos + half_size);
 }
 
 void VoxelVolume::get_bounds(glm::vec3& out_min, glm::vec3& out_max) const {

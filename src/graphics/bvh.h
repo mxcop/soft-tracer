@@ -1,12 +1,13 @@
 #pragma once
 
+#include "aabb.h"
+#include "ray.h"
 #include "vv.h"
 
 class Bvh {
    public:
     struct Node {
-        /* Bounding box */
-        glm::vec3 bbmin, bbmax;
+        AABB aabb;
         u32 left_child, right_child;
         u32 first_prim, prim_count;
     };
@@ -23,11 +24,11 @@ class Bvh {
     void subdivide(Bvh::Node& node, int lvl);
     void build(const std::vector<VoxelVolume>& prims);
 
-    bool intersect(const glm::vec3& ro, const glm::vec3& rd, u32 node_idx) const;
+    bool intersect(const Ray& ray, u32 node_idx) const;
 
    public:
     Bvh(){};
     Bvh(u32 size, const std::vector<VoxelVolume>& new_prims);
 
-    bool intersect(const glm::vec3& ro, const glm::vec3& rd) const;
+    bool intersect(const Ray& ray) const;
 };

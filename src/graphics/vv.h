@@ -1,5 +1,7 @@
 #pragma once
 
+#include "aabb.h"
+
 constexpr float VOXELS_PER_UNIT = 8;
 
 struct VoxelVolume {
@@ -9,7 +11,7 @@ struct VoxelVolume {
     glm::ivec3 size;
     glm::vec3 rot;
 
-    glm::vec3 min, max;
+    AABB aabb;
 
     VoxelVolume(glm::vec3 pos, glm::ivec3 size, glm::vec3 rot);
 

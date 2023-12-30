@@ -53,3 +53,4 @@ target_sources(main PRIVATE
 
 # Sub-directories
 add_subdirectory("extern")
+add_subdirectory("bench")

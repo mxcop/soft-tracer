@@ -10,3 +10,7 @@
 	path = extern/imgui
 	url = https://github.com/ocornut/imgui.git
 	shallow = true
+[submodule "benchmark"]
+	path = extern/benchmark
+	url = https://github.com/google/benchmark.git
+	shallow = true

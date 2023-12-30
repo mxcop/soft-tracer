@@ -3,6 +3,9 @@
     "cmake.options.advanced": {
         "configurePreset": {
             "statusBarVisibility": "visible"
+        },
+        "buildPreset": {
+            "statusBarVisibility": "visible"
         }
     },
     "C_Cpp.autoAddFileAssociations": false,

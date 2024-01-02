@@ -4,11 +4,6 @@
 #include "ray.h"
 #include "vv.h"
 
-#include <xmmintrin.h>
-#include <immintrin.h>
-
-typedef __m256 f256;
-
 struct AABB_256 {
     union {
         f256 corners[2][3];
@@ -28,6 +23,7 @@ class Bvh {
         u32 first_prim, prim_count;
 
         ~Node() { if (prim_aabb) delete prim_aabb; }
+        bool is_leaf() const { return left_child == 0 && right_child == 0; }
     };
 
    private:

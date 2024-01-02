@@ -23,16 +23,16 @@ Renderer::Renderer(int screen_width, int screen_height)
     //vvv.emplace_back(glm::vec3(4.0f, 0.0f, 0.0f), glm::ivec3(8), glm::vec3(0.0f));
     //vvv.emplace_back(glm::vec3(-4.0f, 0.0f, 0.0f), glm::ivec3(8), glm::vec3(0.0f));
 
-    for (int y = 0; y < 6; y++) {
-        for (int x = 0; x < 6; x++) {
-            for (int z = 0; z < 6; z++) {
-                vvv.emplace_back(glm::vec3(x * 2.0f, z * 2.0f, y * 2.0f), glm::ivec3(8),
+    for (int y = 0; y < 8; y++) {
+        for (int x = 0; x < 8; x++) {
+            for (int z = 0; z < 8; z++) {
+                vvv.emplace_back(glm::vec3(x * 4.0f, z * 4.0f, y * 4.0f), glm::ivec3(8),
                                  glm::vec3(0.0f));
             }
         }
     }
 
-    bvh = Bvh(vvv.size(), vvv);
+    bvh = Ovh(vvv.size(), vvv);
 }
 
 Renderer::~Renderer() { delete[] buffer; }
@@ -117,7 +117,7 @@ static uint32_t lerp_color(uint32_t color1, uint32_t color2, float t) {
 //    }
 //    return 0x101010FF;
 //}
-static GLuint trace(const Ray& ray, const Bvh& bvh) {
+static GLuint trace(const Ray& ray, const Ovh& bvh) {
     if (bvh.intersect(ray)) {
         return 0xFF0000FF;
     }

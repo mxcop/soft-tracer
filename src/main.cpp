@@ -19,6 +19,30 @@ constexpr int WINDOW_HEIGHT = 720;
 
 void imgui_init(SDL_Window* window, SDL_GLContext context);
 
+static bool ray_to_aabb(const glm::vec3& ro, const glm::vec3& rd, const glm::vec3& bbmin,
+                        const glm::vec3& bbmax) {
+    float tmin = 0.0, tmax = INFINITY;
+
+    const glm::vec3 corners[2]{bbmin, bbmax};
+    glm::vec3 inv_dir = 1.0f / rd;
+
+    for (int d = 0; d < 3; ++d) {
+        bool sign = signbit(inv_dir[d]);
+        float bmin = corners[sign][d];
+        float bmax = corners[!sign][d];
+
+        float dmin = (bmin - ro[d]) * inv_dir[d];
+        float dmax = (bmax - ro[d]) * inv_dir[d];
+
+        tmin = max(dmin, tmin);
+        tmax = min(dmax, tmax);
+        /* Early out check, saves a lot of compute */
+        if (tmax < tmin) return false;
+    }
+
+    return tmin < tmax;
+}
+
 int main(int argc, char* argv[]) {
     SetProcessDPIAware(); /* <- handle high DPI screens on Windows */
     ImGui_ImplWin32_EnableDpiAwareness();
@@ -40,8 +64,6 @@ int main(int argc, char* argv[]) {
     SDL_GLContext context = SDL_GL_CreateContext(window);
 
     int version = gladLoadGL();
-
-    printf("fps: %f\n", 1.0f / (2073600.0f * 9.81e-10f));
 
     imgui_init(window, context);
 
@@ -132,9 +154,10 @@ int main(int argc, char* argv[]) {
         auto end_time = std::chrono::steady_clock::now();
         float render_time = (end_time - start_time).count() * 0.001f;
 
-        ImGui::Text("fps: %f", 1.0f / dt);
-        ImGui::Text("render time: %fms", render_time * 0.001f);
-        ImGui::Text("avg ray time: %fns", (render_time / (WINDOW_WIDTH * WINDOW_HEIGHT)) * 1000.0f);
+        ImGui::Text("fps: %.2f", 1.0f / dt);
+        ImGui::Text("render time: %.2fms", render_time * 0.001f);
+        ImGui::Text("avg ray time: %.1fns", (render_time / (WINDOW_WIDTH * WINDOW_HEIGHT)) * 1000.0f);
+        ImGui::Text("avg ray time goal: %.1fns", (0.0166666 / (double)(WINDOW_WIDTH * WINDOW_HEIGHT)) * 1.0e+9);
 
         /* Draw the screen buffer */
         GLuint screen_buf = renderer->get_buf();

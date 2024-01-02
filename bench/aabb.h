@@ -22,6 +22,7 @@ typedef float f32;
 typedef double f64;
 
 typedef __m256 f256;
+typedef __m128 f128;
 
 struct AABB_256 {
     union {

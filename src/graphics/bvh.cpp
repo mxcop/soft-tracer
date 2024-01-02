@@ -25,9 +25,23 @@ void update_node_bb(Bvh::Node& node, const std::vector<VoxelVolume>& prims) {
 }
 
 void Bvh::subdivide(Bvh::Node& node, int lvl) {
-     //printf("node: {%i} [%i] (%f, %f, %f) <> (%f, %f, %f)\n", lvl, node.prim_count, node.aabb.min.x,
-     //      node.aabb.min.y, node.aabb.min.z, node.aabb.max.x, node.aabb.max.y, node.aabb.max.z);
-    if (node.prim_count <= 8) return;
+    printf("node: {%i} [%i] [%i] (%f, %f, %f) <> (%f, %f, %f)\n", lvl, node.prim_count,
+           node.prim_count, node.aabb.min.x, node.aabb.min.y, node.aabb.min.z, node.aabb.max.x,
+           node.aabb.max.y, node.aabb.max.z);
+    if (node.prim_count <= 8) {
+        /* Cache the SIMD AABB structure */
+        node.prim_aabb = new AABB_256();
+        VoxelVolume* vvs = &prims[node.first_prim];
+        for (u32 i = 0; i < node.prim_count; ++i) {
+            node.prim_aabb->min[0].m256_f32[i] = vvs[i].aabb.min.x;
+            node.prim_aabb->min[1].m256_f32[i] = vvs[i].aabb.min.y;
+            node.prim_aabb->min[2].m256_f32[i] = vvs[i].aabb.min.z;
+            node.prim_aabb->max[0].m256_f32[i] = vvs[i].aabb.max.x;
+            node.prim_aabb->max[1].m256_f32[i] = vvs[i].aabb.max.y;
+            node.prim_aabb->max[2].m256_f32[i] = vvs[i].aabb.max.z;
+        }
+        return;
+    }
 
     glm::vec3 extent = node.aabb.max - node.aabb.min;
     int axis = 0;
@@ -46,6 +60,8 @@ void Bvh::subdivide(Bvh::Node& node, int lvl) {
     }
 
     int left_count = i - node.first_prim;
+    assert(left_count == 0 || left_count == node.prim_count &&
+                                  "this could mean a leaf with more then 8 primitives!!!");
     if (left_count == 0 || left_count == node.prim_count) return;
 
     int left_child_idx = nodes_used++;
@@ -139,80 +155,70 @@ static bool ray_to_aabb(const glm::vec3& ro, const glm::vec3& rd, const glm::vec
     return tmin < tmax;
 }
 
-#include <xmmintrin.h>
-#include <immintrin.h>
+static inline float _mm256_hadd(const f256& a) {
+    f256 t1 = _mm256_hadd_ps(a, a);
+    f256 t2 = _mm256_hadd_ps(t1, t1);
+    __m128 t3 = _mm256_extractf128_ps(t2, 1);
+    __m128 t4 = _mm_add_ss(_mm256_castps256_ps128(t2), t3);
+    return _mm_cvtss_f32(t4);
+}
 
-typedef __m256 f256;
-
-struct AABB_256 {
-    union {
-        f256 corners[2][3];
-        struct {
-            f256 min[3];
-            f256 max[3];
-        };
-    };
-};
-
-static bool oct_ray_to_aabb(const Ray& ray, u32 cnt, const VoxelVolume* aabbs) {
+static bool oct_ray_to_aabb(const Ray& ray, const AABB_256* aabb) {
     /* TODO: maybe cache these large vectors? */
+    /* Turns out this is very slow, but it's still for the moment better here */
+    /* Because this way we only do it *if* we reach a leaf in the BVH */
     f256 origin[3], dir_inv[3];
     for (u32 i = 0; i < 3; ++i) {
         origin[i] = _mm256_broadcast_ss(&ray.origin[i]);
         dir_inv[i] = _mm256_broadcast_ss(&ray.inv_dir[i]);
     }
 
-    AABB_256 box = {};
-    for (u32 i = 0; i < cnt; ++i) {
-        box.min[0].m256_f32[i] = aabbs[i].aabb.min.x;
-        box.min[1].m256_f32[i] = aabbs[i].aabb.min.y;
-        box.min[2].m256_f32[i] = aabbs[i].aabb.min.z;
-        box.max[0].m256_f32[i] = aabbs[i].aabb.max.x;
-        box.max[1].m256_f32[i] = aabbs[i].aabb.max.y;
-        box.max[2].m256_f32[i] = aabbs[i].aabb.max.z;
-    }
-
     f256 tmin = _mm256_set1_ps(0.0f);
     f256 tmax = _mm256_set1_ps(1'000'000.0f);
 
     for (u32 i = 0; i < 3; ++i) {
-        f256 bmin = box.corners[ray.sign[i]][i];
-        f256 bmax = box.corners[!ray.sign[i]][i];
+        const f256 bmin = aabb->corners[ray.sign[i]][i];
+        const f256 bmax = aabb->corners[!ray.sign[i]][i];
 
-        f256 dmin = _mm256_mul_ps(_mm256_sub_ps(bmin, origin[i]), dir_inv[i]);
-        f256 dmax = _mm256_mul_ps(_mm256_sub_ps(bmax, origin[i]), dir_inv[i]);
+        const f256 dmin = _mm256_mul_ps(_mm256_sub_ps(bmin, origin[i]), dir_inv[i]);
+        const f256 dmax = _mm256_mul_ps(_mm256_sub_ps(bmax, origin[i]), dir_inv[i]);
+
+        // const f256 dmin = _mm256_mul_ps(_mm256_sub_ps(bmin, ray.aabb_cache[i]), ray.aabb_cache[3
+        // + i]); const f256 dmax = _mm256_mul_ps(_mm256_sub_ps(bmax, ray.aabb_cache[i]),
+        // ray.aabb_cache[3 + i]);
 
         tmin = _mm256_max_ps(dmin, tmin);
         tmax = _mm256_min_ps(dmax, tmax);
     }
 
     /* Use a mask to remove non-intersections (tmin <= tmax) */
-    f256 mask = _mm256_cmp_ps(tmin, tmax, _CMP_LE_OQ);
-    f256 result = _mm256_blendv_ps(_mm256_set1_ps(0.0f), tmin, mask);
+    const f256 mask = _mm256_cmp_ps(tmin, tmax, _CMP_LE_OQ);
+    const f256 result = _mm256_blendv_ps(_mm256_set1_ps(0.0f), tmin, mask);
 
-    //f32 results[8]; 
-    //_mm256_store_ps(results, result);
-    /* If any result is > 0 there was an intersection */
-    return (result.m256_f32[0] + result.m256_f32[1] + result.m256_f32[2] + result.m256_f32[3] +
-            result.m256_f32[4] + result.m256_f32[5] + result.m256_f32[6] + result.m256_f32[7]) >
-           0.0f;
+    return _mm256_hadd(result);
 }
 
 bool Bvh::intersect(const Ray& ray, u32 node_idx) const {
     Node& node = nodes[node_idx];
-    if (!ray.intersects_aabb(node.aabb)) return false;
+    if (ray.intersects_aabb(node.aabb) < 0.0f) return false;
 
     if (node.left_child == 0 && node.right_child == 0) {
-        #if 1
+#if 0
+        float mind = INFINITY;
         for (u32 i = 0; i < node.prim_count; i++) {
             const VoxelVolume& prim = prims[node.first_prim + i];
-            if (ray.intersects_aabb(prim.aabb)) return true;
+            float dist = ray.intersects_aabb(prim.aabb);
+            if (dist >= 0.0f) {
+                mind = std::min(mind, dist);
+            }
         }
-        #else
-        for (u32 i = 0; i < node.prim_count; i+=8) {
-            if (oct_ray_to_aabb(ray, std::min(8u, node.prim_count - i), &prims[node.first_prim + i])) return true;
-        }
-        #endif
+        if (mind < INFINITY) return true;
+#else
+        if (oct_ray_to_aabb(ray, node.prim_aabb)) return true;
+            // for (u32 i = 0; i < node.prim_count; i += 8) {
+            //     if (oct_ray_to_aabb(ray, node.prim_aabb)) return true;
+            // }
+#endif
     } else {
         if (intersect(ray, node.left_child)) return true;
         if (intersect(ray, node.right_child)) return true;
@@ -220,4 +226,38 @@ bool Bvh::intersect(const Ray& ray, u32 node_idx) const {
     return false;
 }
 
-bool Bvh::intersect(const Ray& ray) const { return intersect(ray, root_idx); }
+// bool Bvh::intersect(const Ray& ray) const { return intersect(ray, root_idx); }
+
+bool Bvh::intersect(const Ray& ray) const {
+    Node *node = &nodes[root_idx], *stack[64];
+    u32 stack_ptr = 0;
+    while (1) {
+        if (node->is_leaf()) {
+            if (oct_ray_to_aabb(ray, node->prim_aabb)) return true;
+
+            if (stack_ptr == 0)
+                break;
+            else
+                node = stack[--stack_ptr];
+            continue;
+        }
+        Node* child1 = &nodes[node->left_child];
+        Node* child2 = &nodes[node->right_child];
+        float dist1 = ray.intersects_aabb(child1->aabb);
+        float dist2 = ray.intersects_aabb(child2->aabb);
+        if (dist1 < 0.0f && dist2 < 0.0f) {
+            if (stack_ptr == 0)
+                break;
+            else
+                node = stack[--stack_ptr];
+            continue;
+        }
+        if (dist1 >= 0.0f) {
+            node = child1;
+            if (dist2 >= 0.0f) stack[stack_ptr++] = child2;
+        } else {
+            node = child2;
+        }
+    }
+    return false;
+}

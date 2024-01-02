@@ -4,12 +4,26 @@
 #include "ray.h"
 #include "vv.h"
 
+struct AABB_256 {
+    union {
+        f256 corners[2][3];
+        struct {
+            f256 min[3];
+            f256 max[3];
+        };
+    };
+};
+
 class Bvh {
    public:
     struct Node {
         AABB aabb;
+        AABB_256* prim_aabb = nullptr;
         u32 left_child, right_child;
         u32 first_prim, prim_count;
+
+        ~Node() { if (prim_aabb) delete prim_aabb; }
+        bool is_leaf() const { return left_child == 0 && right_child == 0; }
     };
 
    private:

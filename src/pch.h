@@ -13,6 +13,12 @@ typedef int64_t i64;
 typedef float f32;
 typedef double f64;
 
+#include <xmmintrin.h>
+#include <immintrin.h>
+
+typedef __m256 f256;
+typedef __m128 f128;
+
 #include <vector>
 
 #include <glm/glm.hpp>

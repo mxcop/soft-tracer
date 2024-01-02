@@ -14,16 +14,11 @@ struct AABB_256 {
     };
 };
 
-struct RAY_256 {
-    union {
-        f256 cache[6];
-        struct {
-            f256 origin[3];
-            f256 dir_inv[3];
-        };
-    };
-};
-
+/**
+ * @brief Octuple Volume Hierarchy.
+ * A Bounding Volume Hierarchy where each node,
+ * has 8 child nodes, optimized for AVX 256 bit registers.
+ */
 class Ovh {
    public:
     struct Node {

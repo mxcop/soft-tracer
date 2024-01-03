@@ -23,9 +23,9 @@ Renderer::Renderer(int screen_width, int screen_height)
     //vvv.emplace_back(glm::vec3(4.0f, 0.0f, 0.0f), glm::ivec3(8), glm::vec3(0.0f));
     //vvv.emplace_back(glm::vec3(-4.0f, 0.0f, 0.0f), glm::ivec3(8), glm::vec3(0.0f));
 
-    for (int y = 0; y < 8; y++) {
-        for (int x = 0; x < 8; x++) {
-            for (int z = 0; z < 8; z++) {
+    for (int y = 0; y < 32; y++) {
+        for (int x = 0; x < 32; x++) {
+            for (int z = 0; z < 32; z++) {
                 vvv.emplace_back(glm::vec3(x * 4.0f, z * 4.0f, y * 4.0f), glm::ivec3(8),
                                  glm::vec3(0.0f));
             }

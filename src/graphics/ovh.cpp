@@ -10,45 +10,46 @@ Ovh::Ovh(u32 size, const std::vector<VoxelVolume>& new_prims)
     build(new_prims);
 }
 
-void Ovh::update_node_bb(Node& node) {
-    node.aabb = AABB(glm::vec3(1e30f), glm::vec3(-1e30f));
-    for (u32 first = node.first_prim, i = 0; i < node.prim_count; ++i) {
+AABB Ovh::compute_node_bb(const Node& node, u32 first_prim, u32 prim_count) const {
+    AABB bb = AABB(glm::vec3(1e30f), glm::vec3(-1e30f));
+    for (u32 first = first_prim, i = 0; i < prim_count; ++i) {
         const VoxelVolume& prim = prims[first + i];
 
-        node.aabb.min.x = std::min(node.aabb.min.x, prim.aabb.min.x);
-        node.aabb.min.y = std::min(node.aabb.min.y, prim.aabb.min.y);
-        node.aabb.min.z = std::min(node.aabb.min.z, prim.aabb.min.z);
-        node.aabb.max.x = std::max(node.aabb.max.x, prim.aabb.max.x);
-        node.aabb.max.y = std::max(node.aabb.max.y, prim.aabb.max.y);
-        node.aabb.max.z = std::max(node.aabb.max.z, prim.aabb.max.z);
+        bb.min.x = std::min(bb.min.x, prim.aabb.min.x);
+        bb.min.y = std::min(bb.min.y, prim.aabb.min.y);
+        bb.min.z = std::min(bb.min.z, prim.aabb.min.z);
+        bb.max.x = std::max(bb.max.x, prim.aabb.max.x);
+        bb.max.y = std::max(bb.max.y, prim.aabb.max.y);
+        bb.max.z = std::max(bb.max.z, prim.aabb.max.z);
     }
+    return bb;
 }
 
-void Ovh::subdivide(Node& node, int lvl) {
+void Ovh::subdivide(Node& node, const AABB& node_bb, u32 first_prim, u32 prim_count, int lvl) {
     // printf("node: [%i] (%i)\n", lvl, node.prim_count);
 
-    if (node.prim_count <= 8) {
+    if (prim_count <= 8) {
         /* Cache the SIMD AABB structure */
-        node.prim_aabb = AABB_256();
-        VoxelVolume* vvs = &prims[node.first_prim];
-        for (u32 i = 0; i < node.prim_count; ++i) {
-            node.prim_aabb.min[0].m256_f32[i] = vvs[i].aabb.min.x;
-            node.prim_aabb.min[1].m256_f32[i] = vvs[i].aabb.min.y;
-            node.prim_aabb.min[2].m256_f32[i] = vvs[i].aabb.min.z;
-            node.prim_aabb.max[0].m256_f32[i] = vvs[i].aabb.max.x;
-            node.prim_aabb.max[1].m256_f32[i] = vvs[i].aabb.max.y;
-            node.prim_aabb.max[2].m256_f32[i] = vvs[i].aabb.max.z;
+        node.x8_aabb = AABB_256();
+        VoxelVolume* vvs = &prims[first_prim];
+        for (u32 i = 0; i < prim_count; ++i) {
+            node.x8_aabb.min[0].m256_f32[i] = vvs[i].aabb.min.x;
+            node.x8_aabb.min[1].m256_f32[i] = vvs[i].aabb.min.y;
+            node.x8_aabb.min[2].m256_f32[i] = vvs[i].aabb.min.z;
+            node.x8_aabb.max[0].m256_f32[i] = vvs[i].aabb.max.x;
+            node.x8_aabb.max[1].m256_f32[i] = vvs[i].aabb.max.y;
+            node.x8_aabb.max[2].m256_f32[i] = vvs[i].aabb.max.z;
         }
-        node.leaf = true;
+        node.first_child = -1;
         return;
     }
 
-    glm::vec3 extent = node.aabb.max - node.aabb.min;
-    glm::vec3 split = node.aabb.min + extent * 0.5f;
+    glm::vec3 extent = node_bb.max - node_bb.min;
+    glm::vec3 split = node_bb.min + extent * 0.5f;
 
     /* Sort the primatives by their octant */
-    for (u32 i = 0; i < node.prim_count - 1; i++) {
-        for (u32 j = node.first_prim; j < node.first_prim + node.prim_count - i - 1; j++) {
+    for (u32 i = 0; i < prim_count - 1; i++) {
+        for (u32 j = first_prim; j < first_prim + prim_count - i - 1; j++) {
             glm::vec3 d = prims[j].pos - split;
             u32 octant_a = ((d.x > 0) * 2 + (d.y > 0)) * 2 + (d.z > 0);
 
@@ -64,39 +65,41 @@ void Ovh::subdivide(Node& node, int lvl) {
     /* Find the size and index of each octant / child node */
     u32 octant_sizes[8] = {};
     u32 octant_indices[8] = {};
-    for (u32 i = 0; i < node.prim_count; i++) {
-        glm::vec3 d = prims[node.first_prim + i].pos - split;
+    for (u32 i = 0; i < prim_count; i++) {
+        glm::vec3 d = prims[first_prim + i].pos - split;
         u32 octant = ((d.x > 0) * 2 + (d.y > 0)) * 2 + (d.z > 0);
         if (octant_sizes[octant] == 0) {
-            octant_indices[octant] = node.first_prim + i;
+            octant_indices[octant] = first_prim + i;
         }
         octant_sizes[octant]++;
     }
 
-    /* Create the child nodes */
+    /* Create the child nodes and compute their bounding boxes */
+    node.first_child = nodes_used;
+    AABB child_bb[8] = {};
     for (u32 i = 0; i < 8; ++i) {
         u32 child_idx = nodes_used++;
-        node.childern[i] = child_idx;
-
         Node& child = nodes[child_idx];
-        child.first_prim = octant_indices[i];
-        child.prim_count = octant_sizes[i];
 
-        update_node_bb(child);
-        subdivide(child, lvl + 1);
+        child_bb[i] = compute_node_bb(child, octant_indices[i], octant_sizes[i]);
     }
-    node.prim_count = 0;
+
+    /* Subdivide the child nodes */
+    for (u32 i = 0; i < 8; i++) {
+        subdivide(nodes[node.first_child + i], child_bb[i], octant_indices[i], octant_sizes[i],
+                  lvl + 1);
+    }
 
     /* Cache the SIMD AABB structure */
-    node.child_aabb = AABB_256();
+    node.x8_aabb = AABB_256();
     for (u32 i = 0; i < 8; ++i) {
-        const AABB& aabb = nodes[node.childern[i]].aabb;
-        node.child_aabb.min[0].m256_f32[i] = aabb.min.x;
-        node.child_aabb.min[1].m256_f32[i] = aabb.min.y;
-        node.child_aabb.min[2].m256_f32[i] = aabb.min.z;
-        node.child_aabb.max[0].m256_f32[i] = aabb.max.x;
-        node.child_aabb.max[1].m256_f32[i] = aabb.max.y;
-        node.child_aabb.max[2].m256_f32[i] = aabb.max.z;
+        const AABB& aabb = child_bb[i];
+        node.x8_aabb.min[0].m256_f32[i] = aabb.min.x;
+        node.x8_aabb.min[1].m256_f32[i] = aabb.min.y;
+        node.x8_aabb.min[2].m256_f32[i] = aabb.min.z;
+        node.x8_aabb.max[0].m256_f32[i] = aabb.max.x;
+        node.x8_aabb.max[1].m256_f32[i] = aabb.max.y;
+        node.x8_aabb.max[2].m256_f32[i] = aabb.max.z;
     }
 }
 
@@ -105,12 +108,11 @@ void Ovh::build(const std::vector<VoxelVolume>& new_prims) {
 
     /* initialize the root node */
     Node& root = nodes[root_idx];
-    memset(root.childern, 0, 8 * sizeof(u32));
-    root.first_prim = 0, root.prim_count = size;
-    update_node_bb(root);
+    root.first_child = 0;
+    AABB root_bb = compute_node_bb(root, 0, size);
 
     /* start the recursive subdivide */
-    subdivide(root, 0);
+    subdivide(root, root_bb, 0, size, 0);
 }
 
 /**
@@ -141,35 +143,26 @@ static u8 ray_aabb_intersect_x8(const Ray& ray, const AABB_256& aabb) {
 }
 
 bool Ovh::intersect(const Ray& ray) const {
-    Node *node = &nodes[root_idx], *node_stack[128];
+    Node *node = &nodes[root_idx], *node_stack[64];
     u32 stack_ptr = 0;
-    while (1) {
-        if (node->is_leaf()) {
-            if (ray_aabb_intersect_x8(ray, node->prim_aabb)) return true;
-
-            if (stack_ptr == 0)
-                break;
-            else
-                node = node_stack[--stack_ptr];
-            continue;
-        }
-
+    for (;;) {
         /* Compute the intersection mask */
-        u8 int_mask = ray_aabb_intersect_x8(ray, node->child_aabb);
+        u8 int_mask = ray_aabb_intersect_x8(ray, node->x8_aabb);
 
         /* Continue if there were no hits */
         if (!int_mask) {
-            if (stack_ptr == 0)
-                break;
-            else
-                node = node_stack[--stack_ptr];
+            if (stack_ptr == 0) break;
+            node = node_stack[--stack_ptr];
             continue;
         }
 
-        /* Add all hits onto the stack */
+        /* If this node is a leaf, we hit a primitive */
+        if (node->is_leaf()) return true;
+
+        /* Else add all octant intersections onto the stack */
         for (u32 i = 0; i < 8; i++) {
             if (int_mask & (1 << i)) {
-                node_stack[stack_ptr++] = &nodes[node->childern[i]];
+                node_stack[stack_ptr++] = &nodes[node->first_child + i];
             }
         }
         node = node_stack[--stack_ptr];

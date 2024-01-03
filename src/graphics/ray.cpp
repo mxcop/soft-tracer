@@ -9,8 +9,8 @@ static inline glm::ivec3 signbit(glm::vec3 _X) throw() {
 Ray::Ray(const glm::vec3& origin, const glm::vec3& dir)
     : origin(origin), dir(dir), inv_dir(1.0f / dir), sign(signbit(dir)) {
     for (u32 i = 0; i < 3; ++i) {
-        cache.origin[i] = _mm256_broadcast_ss(&origin[i]);
-        cache.dir_inv[i] = _mm256_broadcast_ss(&inv_dir[i]);
+        cache.origin[i] = _mm256_set1_ps(origin[i]);
+        cache.dir_inv[i] = _mm256_set1_ps(inv_dir[i]);
     }
 }
 

@@ -4,7 +4,7 @@
 #include "ray.h"
 #include "vv.h"
 
-struct AABB_256 {
+struct alignas(32) AABB_256 {
     union {
         f256 corners[2][3];
         struct {
@@ -22,18 +22,13 @@ struct AABB_256 {
 class Ovh {
    public:
     struct Node {
-        AABB aabb;
         /* If this is a leaf, it will have the primitive AABB */
-        AABB_256 prim_aabb;
         /* If this is not a leaf, it will have the children AABB */
-        AABB_256 child_aabb;
+        AABB_256 x8_aabb;
 
-        /* Child indices */
-        u32 childern[8]{};
-        u32 first_prim, prim_count;
-        bool leaf = false;
-
-        bool is_leaf() const { return leaf; }
+        /* Index of the first child node (-1 if no children) */
+        i32 first_child;
+        bool is_leaf() const { return first_child < 0; }
     };
 
    private:
@@ -44,11 +39,13 @@ class Ovh {
     // TODO: use a vector of indices instead.
     // So we don't need to modify the actual vector.
     std::vector<VoxelVolume> prims;
-    // std::vector<u32> indices;
 
-    void update_node_bb(Node& node);
+    /**
+     * @brief Compute the bounding box of a node.
+     */
+    AABB compute_node_bb(const Node& node, u32 first_prim, u32 prim_count) const;
 
-    void subdivide(Node& node, int lvl);
+    void subdivide(Node& node, const AABB& node_bb, u32 first_prim, u32 prim_count, int lvl);
     void build(const std::vector<VoxelVolume>& prims);
 
    public:

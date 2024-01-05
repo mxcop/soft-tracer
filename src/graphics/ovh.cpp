@@ -115,13 +115,48 @@ void Ovh::build(const std::vector<VoxelVolume>& new_prims) {
     subdivide(root, root_bb, 0, size, 0);
 }
 
+struct alignas(32) Ray256 {
+    union {
+        f256 origin[3];
+        struct {
+            f256 ox, oy, oz;
+        };
+    };
+    union {
+        f256 inv_dir[3];
+        struct {
+            f256 dx, dy, dz;
+        };
+    };
+};
+
+/**
+ * @brief Compute the intersections between 8 rays and an axis aligned bounding box.
+ * @returns 8 floats representing the distance to the nearest intersection. (0.0 means no intersection)
+ */
+static f256 aabb_ray_dist_x8(const Ray256& rays, const AABB& aabb) {
+    f256 tmin = _mm256_setzero_ps();
+
+    for (u32 i = 0; i < 3; ++i) {
+        const f256 min = _mm256_broadcast_ss(&aabb.min[i]);
+        const f256 max = _mm256_broadcast_ss(&aabb.max[i]);
+
+        const f256 t1 = _mm256_mul_ps(_mm256_sub_ps(min, rays.origin[i]), rays.inv_dir[i]);
+        const f256 t2 = _mm256_mul_ps(_mm256_sub_ps(max, rays.origin[i]), rays.inv_dir[i]);
+
+        tmin = _mm256_max_ps(tmin, _mm256_min_ps(t1, t2));
+    }
+    
+    /* 0.0 means no intersection */
+    return tmin;
+}
+
 /**
  * @brief Compute the intersections between a ray and 8 axis aligned bounding boxes.
- *
  * @returns A byte where each bit represents an intersection.
  */
 static u8 ray_aabb_intersect_x8(const Ray& ray, const AABB_256& aabb) {
-    f256 tmin = _mm256_set1_ps(0.0f);
+    f256 tmin = _mm256_setzero_ps();
     f256 tmax = _mm256_set1_ps(INFINITY);
 
     for (u32 i = 0; i < 3; ++i) {

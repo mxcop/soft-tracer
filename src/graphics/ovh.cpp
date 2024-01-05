@@ -150,7 +150,7 @@ bool Ovh::intersect(const Ray& ray) const {
         u8 int_mask = ray_aabb_intersect_x8(ray, node->x8_aabb);
 
         /* Continue if there were no hits */
-        if (!int_mask) {
+        if (int_mask == 0x00) {
             if (stack_ptr == 0) break;
             node = node_stack[--stack_ptr];
             continue;

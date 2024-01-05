@@ -1,5 +1,6 @@
 #include "renderer.h"
 
+#include <random>
 #include <glm/ext/matrix_clip_space.hpp>
 #include <glm/ext/matrix_transform.hpp>
 #include <imgui.h>
@@ -23,14 +24,24 @@ Renderer::Renderer(int screen_width, int screen_height)
     //vvv.emplace_back(glm::vec3(4.0f, 0.0f, 0.0f), glm::ivec3(8), glm::vec3(0.0f));
     //vvv.emplace_back(glm::vec3(-4.0f, 0.0f, 0.0f), glm::ivec3(8), glm::vec3(0.0f));
 
-    for (int y = 0; y < 32; y++) {
-        for (int x = 0; x < 32; x++) {
-            for (int z = 0; z < 32; z++) {
-                vvv.emplace_back(glm::vec3(x * 4.0f, z * 4.0f, y * 4.0f), glm::ivec3(8),
-                                 glm::vec3(0.0f));
-            }
-        }
+    // for (int y = 0; y < 32; y++) {
+    //     for (int x = 0; x < 32; x++) {
+    //         for (int z = 0; z < 32; z++) {
+    //             vvv.emplace_back(glm::vec3(x * 4.0f, z * 4.0f, y * 4.0f), glm::ivec3(8),
+    //                              glm::vec3(0.0f));
+    //         }
+    //     }
+    // }
+
+    std::random_device seed;
+    std::mt19937 gen(seed());
+    std::uniform_real_distribution<float> rand_s(-100, 100);
+
+    for (u32 i = 0; i < 32768; i++)
+    {
+        vvv.emplace_back(glm::vec3(rand_s(gen), rand_s(gen), rand_s(gen)), glm::ivec3(8), glm::vec3(0.0f));
     }
+    
 
     bvh = Ovh(vvv.size(), vvv);
 }

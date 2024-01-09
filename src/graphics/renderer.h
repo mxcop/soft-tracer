@@ -2,7 +2,7 @@
 
 #include <glad/glad.h>
 
-#include "ovh.h"
+#include "bvh.h"
 
 class Renderer {
     int screen_width, screen_height;
@@ -13,7 +13,7 @@ class Renderer {
     void draw_line(glm::ivec2 p0, glm::ivec2 p1, u32 c);
     void draw_aabb(glm::vec3 min, glm::vec3 max, u32 c, glm::mat4 view, glm::mat4 proj);
 
-    Ovh bvh;
+    Bvh bvh;
 
    public:
     Renderer() = delete;

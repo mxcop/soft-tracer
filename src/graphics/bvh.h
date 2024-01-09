@@ -4,32 +4,33 @@
 #include "ray.h"
 #include "vv.h"
 
-struct AABB_256 {
-    union {
-        f256 corners[2][3];
-        struct {
-            f256 min[3];
-            f256 max[3];
-        };
-    };
-};
-
 class Bvh {
    public:
+    /* NOTE: a cache line is usually 64 bytes */
+    /* This node is 32 bytes, so 2 perfectly fit into a cache line */
     struct Node {
-        AABB aabb;
-        AABB_256* prim_aabb = nullptr;
-        u32 left_child, right_child;
-        u32 first_prim, prim_count;
+        union {
+            f128 aabb_min4;
+            struct {
+                glm::vec3 aabb_min;
+                u32 left_first;
+            };
+        };
+        union {
+            f128 aabb_max4;
+            struct {
+                glm::vec3 aabb_max;
+                u32 prim_count;
+            };
+        };
 
-        ~Node() { if (prim_aabb) delete prim_aabb; }
-        bool is_leaf() const { return left_child == 0 && right_child == 0; }
+        bool is_leaf() const { return prim_count; }
     };
 
    private:
     Node* nodes = nullptr;
-    u32 root_idx = 0, nodes_used = 1;
-    u32 size = 1;
+    u16 root_idx = 0, nodes_used = 1;
+    u16 size = 1;
 
     // TODO: use a vector of indices instead.
     // So we don't need to modify the actual vector.
@@ -38,7 +39,7 @@ class Bvh {
     void subdivide(Bvh::Node& node, int lvl);
     void build(const std::vector<VoxelVolume>& prims);
 
-    bool intersect(const Ray& ray, u32 node_idx) const;
+    // bool intersect(const Ray& ray, u16 node_idx) const;
 
    public:
     Bvh(){};

@@ -3,17 +3,27 @@
 struct AABB;
 
 struct Ray {
-    union alignas(32) {
-        f256 cache[6];
+    union {
         struct {
-            f256 origin[3];
-            f256 dir_inv[3];
+            glm::vec3 origin;
+            f32 _;
         };
-    } cache;
-
-    glm::vec3 origin;
-    glm::vec3 dir, inv_dir;
-    glm::ivec3 sign;
+        f128 origin_4;
+    };
+    union {
+        struct {
+            glm::vec3 dir;
+            f32 _;
+        };
+        f128 dir_4;
+    };
+    union {
+        struct {
+            glm::vec3 inv_dir;
+            f32 _;
+        };
+        f128 inv_dir_4;
+    };
 
     Ray() = delete;
     Ray(const glm::vec3& origin, const glm::vec3& dir);
@@ -27,4 +37,6 @@ struct Ray {
      * @returns -1.0f if there was no intersection, otherwise the distance.
      */
     float intersects_aabb(const AABB& aabb) const;
+
+    float intersects_aabb_sse(const f128 bmin4, const f128 bmax4) const;
 };

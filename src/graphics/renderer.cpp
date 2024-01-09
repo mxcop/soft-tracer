@@ -24,26 +24,26 @@ Renderer::Renderer(int screen_width, int screen_height)
     //vvv.emplace_back(glm::vec3(4.0f, 0.0f, 0.0f), glm::ivec3(8), glm::vec3(0.0f));
     //vvv.emplace_back(glm::vec3(-4.0f, 0.0f, 0.0f), glm::ivec3(8), glm::vec3(0.0f));
 
-    // for (int y = 0; y < 32; y++) {
-    //     for (int x = 0; x < 32; x++) {
-    //         for (int z = 0; z < 32; z++) {
-    //             vvv.emplace_back(glm::vec3(x * 4.0f, z * 4.0f, y * 4.0f), glm::ivec3(8),
-    //                              glm::vec3(0.0f));
-    //         }
-    //     }
-    // }
-
-    std::random_device seed;
-    std::mt19937 gen(seed());
-    std::uniform_real_distribution<float> rand_s(-100, 100);
-
-    for (u32 i = 0; i < 32768; i++)
-    {
-        vvv.emplace_back(glm::vec3(rand_s(gen), rand_s(gen), rand_s(gen)), glm::ivec3(8), glm::vec3(0.0f));
+    for (int y = 0; y < 2; y++) {
+        for (int x = 0; x < 2; x++) {
+            for (int z = 0; z < 2; z++) {
+                vvv.emplace_back(glm::vec3(x * 4.0f, z * 4.0f, y * 4.0f), glm::ivec3(8),
+                                 glm::vec3(0.0f));
+            }
+        }
     }
+
+    // std::random_device seed;
+    // std::mt19937 gen(seed());
+    // std::uniform_real_distribution<float> rand_s(-100, 100);
+
+    // for (u32 i = 0; i < 32768; i++)
+    // {
+    //     vvv.emplace_back(glm::vec3(rand_s(gen), rand_s(gen), rand_s(gen)), glm::ivec3(8), glm::vec3(0.0f));
+    // }
     
 
-    bvh = Ovh(vvv.size(), vvv);
+    bvh = Bvh(vvv.size(), vvv);
 }
 
 Renderer::~Renderer() { delete[] buffer; }
@@ -128,7 +128,7 @@ static uint32_t lerp_color(uint32_t color1, uint32_t color2, float t) {
 //    }
 //    return 0x101010FF;
 //}
-static GLuint trace(const Ray& ray, const Ovh& bvh) {
+static GLuint trace(const Ray& ray, const Bvh& bvh) {
     if (bvh.intersect(ray)) {
         return 0xFF0000FF;
     }
@@ -151,6 +151,31 @@ void Renderer::render(float dt, float time, glm::vec3 cam_pos, glm::vec3 cam_dir
     //box.corners[0] = glm::vec3(-2.5f);
     //box.corners[1] = glm::vec3(2.5f);
 
+#if 1
+    for (int y = 0; y < screen_height; y += 4) {
+        for (int x = 0; x < screen_width; x += 4) {
+            for (int v = 0; v < 4; v++) {
+                for (int u = 0; u < 4; u++) {
+                    int ix = x + u;
+                    int iy = y + v;
+                    glm::vec4 ray_end_ndc(((float)ix / (float)screen_width - 0.5f) * 2.0f,
+                                          ((float)iy / (float)screen_height - 0.5f) * 2.0f,
+                                          0.0,
+                                          1.0f);
+                    glm::vec4 ray_end_world = ndc_to_world * ray_end_ndc;
+                    ray_end_world /= ray_end_world.w;
+
+                    /* NOTE: this normalize is very expensive! */
+                    glm::vec3 ray_dir = glm::normalize(ray_end_world - cam_pos_4);
+                    Ray ray = Ray(cam_pos, ray_dir);
+
+                    // buffer[x + y * screen_width] = trace(cam_pos_4, ray_dir, box, box_model);
+                    buffer[ix + iy * screen_width] = trace(ray, bvh);
+                }
+            }
+        }
+    }
+#else
     for (int y = 0; y < screen_height; y++) {
         for (int x = 0; x < screen_width; x++) {
             glm::vec4 ray_end_ndc(((float)x / (float)screen_width - 0.5f) * 2.0f,
@@ -166,6 +191,7 @@ void Renderer::render(float dt, float time, glm::vec3 cam_pos, glm::vec3 cam_dir
             buffer[x + y * screen_width] = trace(ray, bvh);
         }
     }
+#endif
 
     draw_aabb(glm::vec3(5.0f), glm::vec3(10.0f), 0x00FF00FF, view, proj);
 

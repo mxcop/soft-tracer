@@ -7,70 +7,57 @@
 
 Bvh::Bvh(u32 size, const std::vector<VoxelVolume>& new_prims)
     : size(size), nodes(new Node[size * 2 - 1]{}) {
+    /* Ensure that the number of primitives doesn't overflow */
+    assert(new_prims.size() <= 0xFFFF && "too many primitives!");
+
     build(new_prims);
 }
 
 void update_node_bb(Bvh::Node& node, const std::vector<VoxelVolume>& prims) {
-    node.aabb = AABB(glm::vec3(1e30f), glm::vec3(-1e30f));
-    for (u32 first = node.first_prim, i = 0; i < node.prim_count; ++i) {
+    node.aabb_min = glm::vec3(1e30f);
+    node.aabb_max = glm::vec3(-1e30f);
+    for (u32 first = node.left_first, i = 0; i < node.prim_count; ++i) {
         const VoxelVolume& prim = prims[first + i];
 
-        node.aabb.min.x = std::min(node.aabb.min.x, prim.aabb.min.x);
-        node.aabb.min.y = std::min(node.aabb.min.y, prim.aabb.min.y);
-        node.aabb.min.z = std::min(node.aabb.min.z, prim.aabb.min.z);
-        node.aabb.max.x = std::max(node.aabb.max.x, prim.aabb.max.x);
-        node.aabb.max.y = std::max(node.aabb.max.y, prim.aabb.max.y);
-        node.aabb.max.z = std::max(node.aabb.max.z, prim.aabb.max.z);
+        node.aabb_min.x = std::min(node.aabb_min.x, prim.aabb_min.x);
+        node.aabb_min.y = std::min(node.aabb_min.y, prim.aabb_min.y);
+        node.aabb_min.z = std::min(node.aabb_min.z, prim.aabb_min.z);
+        node.aabb_max.x = std::max(node.aabb_max.x, prim.aabb_max.x);
+        node.aabb_max.y = std::max(node.aabb_max.y, prim.aabb_max.y);
+        node.aabb_max.z = std::max(node.aabb_max.z, prim.aabb_max.z);
     }
 }
 
 void Bvh::subdivide(Bvh::Node& node, int lvl) {
-    printf("node: {%i} [%i] [%i] (%f, %f, %f) <> (%f, %f, %f)\n", lvl, node.prim_count,
-           node.prim_count, node.aabb.min.x, node.aabb.min.y, node.aabb.min.z, node.aabb.max.x,
-           node.aabb.max.y, node.aabb.max.z);
-    if (node.prim_count <= 8) {
-        /* Cache the SIMD AABB structure */
-        node.prim_aabb = new AABB_256();
-        VoxelVolume* vvs = &prims[node.first_prim];
-        for (u32 i = 0; i < node.prim_count; ++i) {
-            node.prim_aabb->min[0].m256_f32[i] = vvs[i].aabb.min.x;
-            node.prim_aabb->min[1].m256_f32[i] = vvs[i].aabb.min.y;
-            node.prim_aabb->min[2].m256_f32[i] = vvs[i].aabb.min.z;
-            node.prim_aabb->max[0].m256_f32[i] = vvs[i].aabb.max.x;
-            node.prim_aabb->max[1].m256_f32[i] = vvs[i].aabb.max.y;
-            node.prim_aabb->max[2].m256_f32[i] = vvs[i].aabb.max.z;
-        }
-        return;
-    }
+    printf("node: {%i} [%i]\n", lvl, node.prim_count);
+    if (node.prim_count <= 2u) return;
 
-    glm::vec3 extent = node.aabb.max - node.aabb.min;
+    glm::vec3 extent = node.aabb_max - node.aabb_min;
     int axis = 0;
     if (extent.y > extent.x) axis = 1;
     if (extent.z > extent[axis]) axis = 2;
-    float split_t = node.aabb.min[axis] + extent[axis] * 0.5f;
+    float split_t = node.aabb_min[axis] + extent[axis] * 0.5f;
 
-    int i = node.first_prim;
+    int i = node.left_first;
     int j = i + node.prim_count - 1;
     while (i <= j) {
-        if (prims[i].pos[axis] < split_t) {
+        if (prims[i].aabb_min[axis] < split_t) {
             i++;
         } else {
             std::swap(prims[i], prims[j--]);
         }
     }
 
-    int left_count = i - node.first_prim;
-    assert(left_count == 0 || left_count == node.prim_count &&
-                                  "this could mean a leaf with more then 8 primitives!!!");
+    int left_count = i - node.left_first;
     if (left_count == 0 || left_count == node.prim_count) return;
 
     int left_child_idx = nodes_used++;
     int right_child_idx = nodes_used++;
-    node.left_child = left_child_idx;
-    nodes[left_child_idx].first_prim = node.first_prim;
+    node.left_first = left_child_idx;
+    nodes[left_child_idx].left_first = node.left_first;
     nodes[left_child_idx].prim_count = left_count;
-    node.right_child = right_child_idx;
-    nodes[right_child_idx].first_prim = i;
+    //node.right_child = right_child_idx;
+    nodes[right_child_idx].left_first = i;
     nodes[right_child_idx].prim_count = node.prim_count - left_count;
     node.prim_count = 0;
 
@@ -86,8 +73,7 @@ void Bvh::build(const std::vector<VoxelVolume>& new_prims) {
 
     /* initialize the root node */
     Node& root = nodes[root_idx];
-    root.left_child = root.right_child = 0;
-    root.first_prim = 0, root.prim_count = size;
+    root.left_first = 0, root.prim_count = size;
     update_node_bb(root, prims);
 
     /* start the recursive subdivide */
@@ -163,77 +149,78 @@ static inline float _mm256_hadd(const f256& a) {
     return _mm_cvtss_f32(t4);
 }
 
-static bool oct_ray_to_aabb(const Ray& ray, const AABB_256* aabb) {
-    /* TODO: maybe cache these large vectors? */
-    /* Turns out this is very slow, but it's still for the moment better here */
-    /* Because this way we only do it *if* we reach a leaf in the BVH */
-    f256 origin[3], dir_inv[3];
-    for (u32 i = 0; i < 3; ++i) {
-        origin[i] = _mm256_broadcast_ss(&ray.origin[i]);
-        dir_inv[i] = _mm256_broadcast_ss(&ray.inv_dir[i]);
-    }
+//static bool oct_ray_to_aabb(const Ray& ray, const AABB_256* aabb) {
+//    /* TODO: maybe cache these large vectors? */
+//    /* Turns out this is very slow, but it's still for the moment better here */
+//    /* Because this way we only do it *if* we reach a leaf in the BVH */
+//    f256 origin[3], dir_inv[3];
+//    for (u32 i = 0; i < 3; ++i) {
+//        origin[i] = _mm256_broadcast_ss(&ray.origin[i]);
+//        dir_inv[i] = _mm256_broadcast_ss(&ray.inv_dir[i]);
+//    }
+//
+//    f256 tmin = _mm256_set1_ps(0.0f);
+//    f256 tmax = _mm256_set1_ps(1'000'000.0f);
+//
+//    for (u32 i = 0; i < 3; ++i) {
+//        const f256 bmin = aabb->corners[ray.sign[i]][i];
+//        const f256 bmax = aabb->corners[!ray.sign[i]][i];
+//
+//        const f256 dmin = _mm256_mul_ps(_mm256_sub_ps(bmin, origin[i]), dir_inv[i]);
+//        const f256 dmax = _mm256_mul_ps(_mm256_sub_ps(bmax, origin[i]), dir_inv[i]);
+//
+//        // const f256 dmin = _mm256_mul_ps(_mm256_sub_ps(bmin, ray.aabb_cache[i]), ray.aabb_cache[3
+//        // + i]); const f256 dmax = _mm256_mul_ps(_mm256_sub_ps(bmax, ray.aabb_cache[i]),
+//        // ray.aabb_cache[3 + i]);
+//
+//        tmin = _mm256_max_ps(dmin, tmin);
+//        tmax = _mm256_min_ps(dmax, tmax);
+//    }
+//
+//    /* Use a mask to remove non-intersections (tmin <= tmax) */
+//    const f256 mask = _mm256_cmp_ps(tmin, tmax, _CMP_LE_OQ);
+//    const f256 result = _mm256_blendv_ps(_mm256_set1_ps(0.0f), tmin, mask);
+//
+//    return _mm256_hadd(result);
+//}
 
-    f256 tmin = _mm256_set1_ps(0.0f);
-    f256 tmax = _mm256_set1_ps(1'000'000.0f);
-
-    for (u32 i = 0; i < 3; ++i) {
-        const f256 bmin = aabb->corners[ray.sign[i]][i];
-        const f256 bmax = aabb->corners[!ray.sign[i]][i];
-
-        const f256 dmin = _mm256_mul_ps(_mm256_sub_ps(bmin, origin[i]), dir_inv[i]);
-        const f256 dmax = _mm256_mul_ps(_mm256_sub_ps(bmax, origin[i]), dir_inv[i]);
-
-        // const f256 dmin = _mm256_mul_ps(_mm256_sub_ps(bmin, ray.aabb_cache[i]), ray.aabb_cache[3
-        // + i]); const f256 dmax = _mm256_mul_ps(_mm256_sub_ps(bmax, ray.aabb_cache[i]),
-        // ray.aabb_cache[3 + i]);
-
-        tmin = _mm256_max_ps(dmin, tmin);
-        tmax = _mm256_min_ps(dmax, tmax);
-    }
-
-    /* Use a mask to remove non-intersections (tmin <= tmax) */
-    const f256 mask = _mm256_cmp_ps(tmin, tmax, _CMP_LE_OQ);
-    const f256 result = _mm256_blendv_ps(_mm256_set1_ps(0.0f), tmin, mask);
-
-    return _mm256_hadd(result);
-}
-
-bool Bvh::intersect(const Ray& ray, u32 node_idx) const {
-    Node& node = nodes[node_idx];
-    if (ray.intersects_aabb(node.aabb) < 0.0f) return false;
-
-    if (node.left_child == 0 && node.right_child == 0) {
-#if 0
-        float mind = INFINITY;
-        for (u32 i = 0; i < node.prim_count; i++) {
-            const VoxelVolume& prim = prims[node.first_prim + i];
-            float dist = ray.intersects_aabb(prim.aabb);
-            if (dist >= 0.0f) {
-                mind = std::min(mind, dist);
-            }
-        }
-        if (mind < INFINITY) return true;
-#else
-        if (oct_ray_to_aabb(ray, node.prim_aabb)) return true;
-            // for (u32 i = 0; i < node.prim_count; i += 8) {
-            //     if (oct_ray_to_aabb(ray, node.prim_aabb)) return true;
-            // }
-#endif
-    } else {
-        if (intersect(ray, node.left_child)) return true;
-        if (intersect(ray, node.right_child)) return true;
-    }
-    return false;
-}
+//bool Bvh::intersect(const Ray& ray, u32 node_idx) const {
+//    Node& node = nodes[node_idx];
+//    if (ray.intersects_aabb(node.aabb) < 0.0f) return false;
+//
+//    if (node.left_child == 0 && node.right_child == 0) {
+//        float mind = INFINITY;
+//        for (u16 i = 0; i < node.prim_count; i++) {
+//            const AABB& prim_aabb = prim_aabbs[node.first_prim + i];
+//            float dist = ray.intersects_aabb(prim_aabb);
+//            if (dist >= 0.0f) {
+//                mind = std::min(mind, dist);
+//            }
+//        }
+//        if (mind < INFINITY) return true;
+//    } else {
+//        if (intersect(ray, node.left_child)) return true;
+//        if (intersect(ray, node.right_child)) return true;
+//    }
+//    return false;
+//}
 
 // bool Bvh::intersect(const Ray& ray) const { return intersect(ray, root_idx); }
 
 bool Bvh::intersect(const Ray& ray) const {
-    Node *node = &nodes[root_idx], *stack[64];
+    Node *node = &nodes[root_idx], *stack[128];
     u32 stack_ptr = 0;
     while (1) {
         if (node->is_leaf()) {
-            if (oct_ray_to_aabb(ray, node->prim_aabb)) return true;
+            float mind = INFINITY;
+            for (u16 i = 0; i < node->prim_count; i++) {
+                const VoxelVolume& prim = prims[node->left_first + i];
+                float dist = ray.intersects_aabb_sse(prim.aabb_min4, prim.aabb_max4);
+                if (dist >= 0.0f) {
+                    mind = std::min(mind, dist);
+                }
+            }
+            if (mind < INFINITY) return true;
 
             if (stack_ptr == 0)
                 break;
@@ -241,10 +228,10 @@ bool Bvh::intersect(const Ray& ray) const {
                 node = stack[--stack_ptr];
             continue;
         }
-        Node* child1 = &nodes[node->left_child];
-        Node* child2 = &nodes[node->right_child];
-        float dist1 = ray.intersects_aabb(child1->aabb);
-        float dist2 = ray.intersects_aabb(child2->aabb);
+        Node* child1 = &nodes[node->left_first];
+        Node* child2 = &nodes[node->left_first + 1];
+        float dist1 = ray.intersects_aabb_sse(child1->aabb_min4, child1->aabb_max4);
+        float dist2 = ray.intersects_aabb_sse(child2->aabb_min4, child2->aabb_max4);
         if (dist1 < 0.0f && dist2 < 0.0f) {
             if (stack_ptr == 0)
                 break;

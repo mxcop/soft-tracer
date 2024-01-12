@@ -20,9 +20,9 @@ Renderer::Renderer(int screen_width, int screen_height)
     glBindTexture(GL_TEXTURE_2D, 0);
 
     std::vector<VoxelVolume> vvv;
-    //vvv.emplace_back(glm::vec3(0.0f), glm::ivec3(8), glm::vec3(0.0f));
-    //vvv.emplace_back(glm::vec3(4.0f, 0.0f, 0.0f), glm::ivec3(8), glm::vec3(0.0f));
-    //vvv.emplace_back(glm::vec3(-4.0f, 0.0f, 0.0f), glm::ivec3(8), glm::vec3(0.0f));
+    // vvv.emplace_back(glm::vec3(0.0f), glm::ivec3(8), glm::vec3(0.0f));
+    // vvv.emplace_back(glm::vec3(4.0f, 0.0f, 0.0f), glm::ivec3(8), glm::vec3(0.0f));
+    // vvv.emplace_back(glm::vec3(-4.0f, 0.0f, 0.0f), glm::ivec3(8), glm::vec3(0.0f));
 
     for (int y = 0; y < 2; y++) {
         for (int x = 0; x < 2; x++) {
@@ -39,9 +39,9 @@ Renderer::Renderer(int screen_width, int screen_height)
 
     // for (u32 i = 0; i < 32768; i++)
     // {
-    //     vvv.emplace_back(glm::vec3(rand_s(gen), rand_s(gen), rand_s(gen)), glm::ivec3(8), glm::vec3(0.0f));
+    //     vvv.emplace_back(glm::vec3(rand_s(gen), rand_s(gen), rand_s(gen)), glm::ivec3(8),
+    //     glm::vec3(0.0f));
     // }
-    
 
     bvh = Bvh(vvv.size(), vvv);
 }
@@ -51,58 +51,58 @@ Renderer::~Renderer() { delete[] buffer; }
 /**
  * @brief Ray to Axis Aligned Bounding Box intersection test.
  */
-//static bool ray_to_aabb(const Ray& ray, const Box& box) {
-//    float tmin = 0.0, tmax = INFINITY;
+// static bool ray_to_aabb(const Ray& ray, const Box& box) {
+//     float tmin = 0.0, tmax = INFINITY;
 //
-//    for (int d = 0; d < 3; ++d) {
-//        bool sign = signbit(ray.dir_inv[d]);
-//        float bmin = box.corners[sign][d];
-//        float bmax = box.corners[!sign][d];
+//     for (int d = 0; d < 3; ++d) {
+//         bool sign = signbit(ray.dir_inv[d]);
+//         float bmin = box.corners[sign][d];
+//         float bmax = box.corners[!sign][d];
 //
-//        float dmin = (bmin - ray.origin[d]) * ray.dir_inv[d];
-//        float dmax = (bmax - ray.origin[d]) * ray.dir_inv[d];
+//         float dmin = (bmin - ray.origin[d]) * ray.dir_inv[d];
+//         float dmax = (bmax - ray.origin[d]) * ray.dir_inv[d];
 //
-//        tmin = std::max(dmin, tmin);
-//        tmax = std::min(dmax, tmax);
-//        /* Early out check, saves a lot of compute */
-//        if (tmax < tmin) return false;
-//    }
+//         tmin = std::max(dmin, tmin);
+//         tmax = std::min(dmax, tmax);
+//         /* Early out check, saves a lot of compute */
+//         if (tmax < tmin) return false;
+//     }
 //
-//    return tmin < tmax;
-//}
+//     return tmin < tmax;
+// }
 
 /**
  * @brief Ray to Oriented Bounding Box intersection test.
  */
-//static float ray_to_obb(const glm::vec3& ro, const glm::vec3& rd, const Box& box,
-//                        const glm::mat4& model) {
-//    float t_min = 0.0, t_max = INFINITY;
+// static float ray_to_obb(const glm::vec3& ro, const glm::vec3& rd, const Box& box,
+//                         const glm::mat4& model) {
+//     float t_min = 0.0, t_max = INFINITY;
 //
-//    /* "model[3]" holds the world position of the box */
-//    glm::vec3 delta = glm::vec3(model[3]) - ro;
+//     /* "model[3]" holds the world position of the box */
+//     glm::vec3 delta = glm::vec3(model[3]) - ro;
 //
-//    /* loop to be unrolled by the compiler */
-//    for (int d = 0; d < 3; ++d) {
-//        glm::vec3 axis = glm::vec3(model[d]);
-//        float e = glm::dot(axis, delta), f_inv = 1.0f / glm::dot(rd, axis);
+//     /* loop to be unrolled by the compiler */
+//     for (int d = 0; d < 3; ++d) {
+//         glm::vec3 axis = glm::vec3(model[d]);
+//         float e = glm::dot(axis, delta), f_inv = 1.0f / glm::dot(rd, axis);
 //
-//        float t1 = (e + box.corners[0][d]) * f_inv;
-//        float t2 = (e + box.corners[1][d]) * f_inv;
+//         float t1 = (e + box.corners[0][d]) * f_inv;
+//         float t2 = (e + box.corners[1][d]) * f_inv;
 //
-//        /* swap t1 & t2 so t1 is always the smallest */
-//        if (t1 > t2) {
-//            float temp = t1;
-//            t1 = t2, t2 = temp;
-//        }
+//         /* swap t1 & t2 so t1 is always the smallest */
+//         if (t1 > t2) {
+//             float temp = t1;
+//             t1 = t2, t2 = temp;
+//         }
 //
-//        t_min = std::max(t1, t_min);
-//        t_max = std::min(t2, t_max);
+//         t_min = std::max(t1, t_min);
+//         t_max = std::min(t2, t_max);
 //
-//        /* early out check */
-//        if (t_max < t_min) return -1.0f;
-//    }
-//    return t_min;
-//}
+//         /* early out check */
+//         if (t_max < t_min) return -1.0f;
+//     }
+//     return t_min;
+// }
 
 static uint32_t lerp_color(uint32_t color1, uint32_t color2, float t) {
     constexpr uint32_t RBmask = 0xff00ff00;
@@ -120,14 +120,14 @@ static uint32_t lerp_color(uint32_t color1, uint32_t color2, float t) {
     return rb | ga;
 }
 
-//static GLuint trace(const glm::vec4& ro, const glm::vec3& rd, const Box& box,
-//                    const glm::mat4& box_model) {
-//    float dist = ray_to_obb(ro, rd, box, box_model);
-//    if (dist > 0.0f) {
-//        return lerp_color(0xFFFFFFFF, 0x000000FF, dist / 1000.0f);
-//    }
-//    return 0x101010FF;
-//}
+// static GLuint trace(const glm::vec4& ro, const glm::vec3& rd, const Box& box,
+//                     const glm::mat4& box_model) {
+//     float dist = ray_to_obb(ro, rd, box, box_model);
+//     if (dist > 0.0f) {
+//         return lerp_color(0xFFFFFFFF, 0x000000FF, dist / 1000.0f);
+//     }
+//     return 0x101010FF;
+// }
 static GLuint trace(const Ray& ray, const Bvh& bvh) {
     if (bvh.intersect(ray)) {
         return 0xFF0000FF;
@@ -147,20 +147,21 @@ void Renderer::render(float dt, float time, glm::vec3 cam_pos, glm::vec3 cam_dir
     box_model = glm::rotate(box_model, time * 0.5f, glm::vec3(0.0f, 0.5f, 0.5f));
     // glm::mat4 box_model_inv = glm::inverse(box_model);
 
-    //Box box = {};
-    //box.corners[0] = glm::vec3(-2.5f);
-    //box.corners[1] = glm::vec3(2.5f);
+    // Box box = {};
+    // box.corners[0] = glm::vec3(-2.5f);
+    // box.corners[1] = glm::vec3(2.5f);
 
 #if 1
-    for (int y = 0; y < screen_height; y += 4) {
-        for (int x = 0; x < screen_width; x += 4) {
-            for (int v = 0; v < 4; v++) {
-                for (int u = 0; u < 4; u++) {
+    constexpr i32 TILE_SIZE = 8;
+
+    for (int y = 0; y < screen_height; y += TILE_SIZE) {
+        for (int x = 0; x < screen_width; x += TILE_SIZE) {
+            for (int v = 0; v < TILE_SIZE; v++) {
+                for (int u = 0; u < TILE_SIZE; u++) {
                     int ix = x + u;
                     int iy = y + v;
                     glm::vec4 ray_end_ndc(((float)ix / (float)screen_width - 0.5f) * 2.0f,
-                                          ((float)iy / (float)screen_height - 0.5f) * 2.0f,
-                                          0.0,
+                                          ((float)iy / (float)screen_height - 0.5f) * 2.0f, 0.0,
                                           1.0f);
                     glm::vec4 ray_end_world = ndc_to_world * ray_end_ndc;
                     ray_end_world /= ray_end_world.w;

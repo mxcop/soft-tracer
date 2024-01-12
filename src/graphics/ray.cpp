@@ -32,5 +32,5 @@ float Ray::intersects_aabb_sse(const f128 bmin4, const f128 bmax4) const {
     const f128 vmax4 = _mm_max_ps(t1, t2), vmin4 = _mm_min_ps(t1, t2);
     const float tmax = std::min(vmax4.m128_f32[0], std::min(vmax4.m128_f32[1], vmax4.m128_f32[2]));
     const float tmin = std::max(vmin4.m128_f32[0], std::max(vmin4.m128_f32[1], vmin4.m128_f32[2]));
-    return tmax >= tmin ? tmin : -1.0f;
+    return (tmax >= tmin) ? tmin : BIG_F32;
 }

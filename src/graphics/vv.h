@@ -31,5 +31,6 @@ struct VoxelVolume {
     VoxelVolume(glm::vec3 pos, glm::ivec3 size, glm::vec3 rot);
 
     void get_bounds(glm::vec3& out_min, glm::vec3& out_max) const;
+    glm::vec3 center() const;
     glm::mat4 get_model() const;
 };

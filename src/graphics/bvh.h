@@ -4,6 +4,11 @@
 #include "ray.h"
 #include "vv.h"
 
+/*
+ * The BVH implementation is heavily inspired by a series of articles from Jacco Bikker.
+ * Source: https://jacco.ompf2.com/2022/04/13/how-to-build-a-bvh-part-1-basics/
+ */
+
 class Bvh {
    public:
     /* NOTE: a cache line is usually 64 bytes */
@@ -45,5 +50,6 @@ class Bvh {
     Bvh(){};
     Bvh(u32 size, const std::vector<VoxelVolume>& new_prims);
 
+    f32 evaluate_sah(const Node& node, i32 axis, f32 pos) const;
     bool intersect(const Ray& ray) const;
 };

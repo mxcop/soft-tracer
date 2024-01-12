@@ -19,6 +19,8 @@ typedef double f64;
 typedef __m256 f256;
 typedef __m128 f128;
 
+constexpr f32 BIG_F32 = 1e30f;
+
 #include <vector>
 
 #include <glm/glm.hpp>

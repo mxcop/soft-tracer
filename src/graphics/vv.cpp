@@ -27,6 +27,8 @@ void VoxelVolume::get_bounds(glm::vec3& out_min, glm::vec3& out_max) const {
     out_max = aabb_max;
 }
 
+glm::vec3 VoxelVolume::center() const { return aabb_min + (aabb_max - aabb_min) * 0.5f; }
+
 glm::mat4 VoxelVolume::get_model() const {
     glm::mat4 model = glm::mat4(1.0f);
     // model = glm::translate(model, pos);

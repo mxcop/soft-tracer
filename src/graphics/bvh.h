@@ -44,12 +44,15 @@ class Bvh {
     void subdivide(Bvh::Node& node, int lvl);
     void build(const std::vector<VoxelVolume>& prims);
 
-    // bool intersect(const Ray& ray, u16 node_idx) const;
-
    public:
     Bvh(){};
     Bvh(u32 size, const std::vector<VoxelVolume>& new_prims);
 
+    /**
+     * @brief Evaluate the surface area heuristic of a node along an axis with a certain split
+     * position.
+     */
     f32 evaluate_sah(const Node& node, i32 axis, f32 pos) const;
+
     bool intersect(const Ray& ray) const;
 };

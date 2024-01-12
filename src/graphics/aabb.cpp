@@ -1,5 +1,7 @@
 #include "aabb.h"
 
+AABB::AABB() : min(BIG_F32), max(-BIG_F32) {}
+
 AABB::AABB(glm::vec3 min, glm::vec3 max) : min(min), max(max) {}
 
 void AABB::grow(glm::vec3 p) {

@@ -2,13 +2,13 @@
 
 struct AABB {
     union {
-        glm::vec3 corners[2] = {glm::vec3(BIG_F32), glm::vec3(-BIG_F32)};
+        glm::vec3 corners[2];
         struct {
             glm::vec3 min, max;
         };
     };
 
-    AABB() = default;
+    AABB();
     AABB(glm::vec3 min, glm::vec3 max);
 
     /**

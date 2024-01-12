@@ -37,6 +37,7 @@ struct Ray {
      * @returns -1.0f if there was no intersection, otherwise the distance.
      */
     float intersects_aabb(const AABB& aabb) const;
+    float intersects_aabb(const glm::vec3& min, const glm::vec3& max) const;
 
     float intersects_aabb_sse(const f128 bmin4, const f128 bmax4) const;
 };

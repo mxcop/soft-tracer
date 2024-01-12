@@ -47,9 +47,16 @@ float Ray::intersects_aabb(const glm::vec3& min, const glm::vec3& max) const {
 }
 
 float Ray::intersects_aabb_sse(const f128 bmin4, const f128 bmax4) const {
-    static const f128 mask4 = _mm_cmpeq_ps(_mm_setzero_ps(), _mm_set_ps(1, 0, 0, 0));
-    const f128 t1 = _mm_mul_ps(_mm_sub_ps(_mm_and_ps(bmin4, mask4), origin_4), inv_dir_4);
-    const f128 t2 = _mm_mul_ps(_mm_sub_ps(_mm_and_ps(bmax4, mask4), origin_4), inv_dir_4);
+    /* IMPORTANT! the mask saves a lot of CPU cycles,
+     * it removes the 4th garbage element in the vectors. */
+
+    /* Instead of "mask4 = _mm_cmpeq_ps(_mm_setzero_ps(), _mm_set_ps(1, 0, 0, 0))" */
+    /* Using this bit hack is slightly faster in practice */
+    const i128 mask4 = _mm_set_epi32(0x00000000, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF);
+    const f128 fmask4 = reinterpret_cast<const f128&>(mask4); /* bit hack */
+    const f128 t1 = _mm_mul_ps(_mm_sub_ps(_mm_and_ps(bmin4, fmask4), origin_4), inv_dir_4);
+    const f128 t2 = _mm_mul_ps(_mm_sub_ps(_mm_and_ps(bmax4, fmask4), origin_4), inv_dir_4);
+
     const f128 vmax4 = _mm_max_ps(t1, t2), vmin4 = _mm_min_ps(t1, t2);
     const float tmax = std::min(vmax4.m128_f32[0], std::min(vmax4.m128_f32[1], vmax4.m128_f32[2]));
     const float tmin = std::max(vmin4.m128_f32[0], std::max(vmin4.m128_f32[1], vmin4.m128_f32[2]));

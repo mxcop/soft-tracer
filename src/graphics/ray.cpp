@@ -46,6 +46,7 @@ float Ray::intersects_aabb(const glm::vec3& min, const glm::vec3& max) const {
     return tmin;
 }
 
+/* Adapted from <https://jacco.ompf2.com/2022/04/18/how-to-build-a-bvh-part-2-faster-rays/> */
 float Ray::intersects_aabb_sse(const f128 bmin4, const f128 bmax4) const {
     /* IMPORTANT! the mask saves a lot of CPU cycles,
      * it removes the 4th garbage element in the vectors. */

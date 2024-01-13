@@ -13,7 +13,7 @@ class Bvh {
    public:
     /* NOTE: a cache line is usually 64 bytes */
     /* This node is 32 bytes, so 2 perfectly fit into a cache line */
-    struct Node {
+    struct alignas(32) Node {
         union {
             f128 aabb_min4;
             struct {
@@ -53,6 +53,7 @@ class Bvh {
      * position.
      */
     f32 evaluate_sah(const Node& node, i32 axis, f32 pos) const;
+    f32 find_best_split_plane(const Node& node, i32& axis, f32& pos) const;
 
     bool intersect(const Ray& ray) const;
 };

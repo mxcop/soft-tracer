@@ -44,33 +44,118 @@ f32 Bvh::evaluate_sah(const Node& node, i32 axis, f32 pos) const {
     return cost > 0.0f ? cost : BIG_F32;
 }
 
+#define SAH_FULL_SWEEP 0
+#define SAH_BINS 1
+struct Bin {
+    AABB aabb;
+    u32 prim_count = 0;
+};
+
+f32 Bvh::find_best_split_plane(const Node& node, i32& axis, f32& pos) const {
+    f32 best_cost = BIG_F32;
+#if SAH_FULL_SWEEP
+    for (i32 a = 0; a < 3; ++a) {
+        for (u32 i = 0; i < node.prim_count; ++i) {
+            const VoxelVolume& prim = prims[node.left_first + i];
+            f32 candidate_pos = prim.center()[a];
+            f32 cost = evaluate_sah(node, a, candidate_pos);
+            if (cost < best_cost) pos = candidate_pos, axis = a, best_cost = cost;
+        }
+    }
+#elif SAH_BINS
+    constexpr i32 BINS = 8;
+    for (i32 a = 0; a < 3; ++a) {
+        /* Get the min and max of all primitives in the node */
+        f32 bmin = BIG_F32, bmax = -BIG_F32;
+        for (u32 i = 0; i < node.prim_count; ++i) {
+            const glm::vec3 prim_center = prims[node.left_first + i].center();
+            bmin = std::min(bmin, prim_center[a]);
+            bmax = std::max(bmax, prim_center[a]);
+        }
+        if (bmin == bmax) continue;
+
+        /* Populate the bins */
+        Bin bins[BINS];
+        f32 scale = BINS / (bmax - bmin);
+        for (u32 i = 0; i < node.prim_count; ++i) {
+            const VoxelVolume& prim = prims[node.left_first + i];
+            i32 bin_idx = std::min(BINS - 1, static_cast<i32>((prim.center()[a] - bmin) * scale));
+            bins[bin_idx].prim_count++;
+            bins[bin_idx].aabb.grow(prim.aabb_min);
+            bins[bin_idx].aabb.grow(prim.aabb_max);
+        }
+
+        /* Gather data for the planes between the bins */
+        f32 l_areas[BINS - 1], r_areas[BINS - 1];
+        i32 l_counts[BINS - 1], r_counts[BINS - 1];
+        AABB l_aabb, r_aabb;
+        i32 l_sum = 0, r_sum = 0;
+        for (i32 i = 0; i < BINS - 1; ++i) {
+            /* Left-side */
+            l_sum += bins[i].prim_count;
+            l_counts[i] = l_sum;
+            l_aabb.grow(bins[i].aabb);
+            l_areas[i] = l_aabb.area();
+            /* Right-side */
+            r_sum += bins[BINS - 1 - i].prim_count;
+            r_counts[BINS - 2 - i] = r_sum;
+            r_aabb.grow(bins[BINS - 1 - i].aabb);
+            r_areas[BINS - 2 - i] = r_aabb.area();
+        }
+
+        /* Calculate the SAH cost function for all planes */
+        scale = (bmax - bmin) / BINS;
+        for (i32 i = 0; i < BINS - 1; ++i) {
+            f32 plane_cost = l_counts[i] * l_areas[i] + r_counts[i] * r_areas[i];
+            if (plane_cost < best_cost)
+                axis = a, pos = bmin + scale * (i + 1), best_cost = plane_cost;
+        }
+    }
+#else
+    /* 8 candidates results in a decent tree */
+    constexpr u32 UNIFORM_CANDIDATES = 8;
+    for (i32 a = 0; a < 3; ++a) {
+        /* Get the min and max of all primitives in the node */
+        f32 bmin = BIG_F32, bmax = -BIG_F32;
+        for (u32 i = 0; i < node.prim_count; ++i) {
+            const glm::vec3 prim_center = prims[node.left_first + i].center();
+            bmin = std::min(bmin, prim_center[a]);
+            bmax = std::max(bmax, prim_center[a]);
+        }
+        if (bmin == bmax) continue;
+
+        /* Evaluate the SAH of the uniform candidates */
+        f32 scale = (bmax - bmin) / UNIFORM_CANDIDATES;
+        for (u32 i = 1; i < UNIFORM_CANDIDATES; ++i) {
+            f32 candidatePos = bmin + i * scale;
+            f32 cost = evaluate_sah(node, a, candidatePos);
+            if (cost < best_cost) pos = candidatePos, axis = a, best_cost = cost;
+        }
+    }
+#endif
+    return best_cost;
+}
+
 void Bvh::subdivide(Bvh::Node& node, int lvl) {
     printf("node: {%i} [%i]\n", lvl, node.prim_count);
     if (node.prim_count <= 2u) return;
 
     /* Determine split based on SAH */
-    i32 best_axis = -1;
-    f32 best_pos = 0, best_cost = BIG_F32;
-    for (i32 axis = 0; axis < 3; ++axis) {
-        for (u32 i = 0; i < node.prim_count; ++i) {
-            const VoxelVolume& prim = prims[node.left_first + i];
-            f32 candidate_pos = prim.center()[axis];
-            f32 cost = evaluate_sah(node, axis, candidate_pos);
-            if (cost < best_cost) best_pos = candidate_pos, best_axis = axis, best_cost = cost;
-        }
-    }
+    i32 split_axis = -1;
+    f32 split_t = 0;
+    f32 split_cost = find_best_split_plane(node, split_axis, split_t);
 
     /* Calculate parent node cost */
     glm::vec3 e = node.aabb_max - node.aabb_min;
     f32 parent_area = e.x * e.y + e.y * e.z + e.z * e.x;
     f32 parent_cost = node.prim_count * parent_area;
-    if (best_cost >= parent_cost) return; /* Split would not be worth it */
+    if (split_cost >= parent_cost) return; /* Split would not be worth it */
 
     /* Determine which primitives lie on which side */
     int i = node.left_first;
     int j = i + node.prim_count - 1;
     while (i <= j) {
-        if (prims[i].center()[best_axis] < best_pos) {
+        if (prims[i].center()[split_axis] < split_t) {
             i++;
         } else {
             std::swap(prims[i], prims[j--]);
@@ -132,8 +217,15 @@ bool Bvh::intersect(const Ray& ray) const {
         /* In case we're not a leaf, see if we intersect the child nodes */
         const Node* child1 = &nodes[node->left_first];
         const Node* child2 = &nodes[node->left_first + 1];
+#if 0
         float dist1 = ray.intersects_aabb_sse(child1->aabb_min4, child1->aabb_max4);
         float dist2 = ray.intersects_aabb_sse(child2->aabb_min4, child2->aabb_max4);
+#else
+        glm::vec2 dists = ray.intersects_aabb2_avx(child1->aabb_min4, child1->aabb_max4,
+                                                   child2->aabb_min4, child2->aabb_max4);
+        float dist1 = dists.x;
+        float dist2 = dists.y;
+#endif
 
         /* Put the smallest distance upfront */
         if (dist1 > dist2) {

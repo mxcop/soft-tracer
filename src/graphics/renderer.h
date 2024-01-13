@@ -16,6 +16,8 @@ class Renderer {
     Bvh bvh;
 
    public:
+    f32 db_build_time = 0.0f;
+
     Renderer() = delete;
     Renderer(int screen_width, int screen_height);
     ~Renderer();

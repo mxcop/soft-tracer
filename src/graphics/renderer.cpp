@@ -1,5 +1,6 @@
 #include "renderer.h"
 
+#include <chrono>
 #include <random>
 #include <glm/ext/matrix_clip_space.hpp>
 #include <glm/ext/matrix_transform.hpp>
@@ -24,6 +25,7 @@ Renderer::Renderer(int screen_width, int screen_height)
     // vvv.emplace_back(glm::vec3(4.0f, 0.0f, 0.0f), glm::ivec3(8), glm::vec3(0.0f));
     // vvv.emplace_back(glm::vec3(-4.0f, 0.0f, 0.0f), glm::ivec3(8), glm::vec3(0.0f));
 
+#if 0
     for (int y = 0; y < 2; y++) {
         for (int x = 0; x < 2; x++) {
             for (int z = 0; z < 2; z++) {
@@ -32,18 +34,21 @@ Renderer::Renderer(int screen_width, int screen_height)
             }
         }
     }
+#else
+    std::random_device seed;
+    std::mt19937 gen(seed());
+    std::uniform_real_distribution<float> rand_s(-10, 10);
 
-    // std::random_device seed;
-    // std::mt19937 gen(seed());
-    // std::uniform_real_distribution<float> rand_s(-100, 100);
+    for (u32 i = 0; i < 32; i++) {
+        vvv.emplace_back(glm::vec3(rand_s(gen), rand_s(gen), rand_s(gen)), glm::ivec3(8),
+                         glm::vec3(0.0f));
+    }
+#endif
 
-    // for (u32 i = 0; i < 32768; i++)
-    // {
-    //     vvv.emplace_back(glm::vec3(rand_s(gen), rand_s(gen), rand_s(gen)), glm::ivec3(8),
-    //     glm::vec3(0.0f));
-    // }
-
+    auto start_time = std::chrono::steady_clock::now();
     bvh = Bvh(vvv.size(), vvv);
+    auto end_time = std::chrono::steady_clock::now();
+    db_build_time = (end_time - start_time).count() * 0.001f;
 }
 
 Renderer::~Renderer() { delete[] buffer; }
@@ -152,7 +157,7 @@ void Renderer::render(float dt, float time, glm::vec3 cam_pos, glm::vec3 cam_dir
     // box.corners[1] = glm::vec3(2.5f);
 
 #if 1
-    constexpr i32 TILE_SIZE = 8;
+    constexpr i32 TILE_SIZE = 4;
 
     for (int y = 0; y < screen_height; y += TILE_SIZE) {
         for (int x = 0; x < screen_width; x += TILE_SIZE) {

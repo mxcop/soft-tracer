@@ -157,6 +157,7 @@ int main(int argc, char* argv[]) {
         float render_time = (end_time - start_time).count() * 0.001f;
 
         ImGui::Text("fps: %.2f", 1.0f / dt);
+        ImGui::Text("build time: %.2fms", renderer->db_build_time * 0.001f);
         ImGui::Text("render time: %.2fms", render_time * 0.001f);
         ImGui::Text("avg ray time: %.1fns", (render_time / (WINDOW_WIDTH * WINDOW_HEIGHT)) * 1000.0f);
         ImGui::Text("avg ray time goal: %.1fns", (0.0166666 / (double)(WINDOW_WIDTH * WINDOW_HEIGHT)) * 1.0e+9);

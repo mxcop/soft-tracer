@@ -17,6 +17,7 @@ typedef double f64;
 #include <immintrin.h>
 
 typedef __m256 f256;
+typedef __m256i i256;
 typedef __m128 f128;
 typedef __m128i i128;
 

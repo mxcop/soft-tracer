@@ -40,4 +40,6 @@ struct Ray {
     float intersects_aabb(const glm::vec3& min, const glm::vec3& max) const;
 
     float intersects_aabb_sse(const f128 bmin4, const f128 bmax4) const;
+    glm::vec2 intersects_aabb2_avx(const f128& amin4, const f128& amax4, const f128& bmin4,
+                                   const f128& bmax4) const;
 };

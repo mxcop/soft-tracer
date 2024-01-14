@@ -195,18 +195,20 @@ void Bvh::build(const std::vector<VoxelVolume>& new_prims) {
     subdivide(root, 0);
 }
 
-bool Bvh::intersect(const Ray& ray) const {
+f32 Bvh::intersect(const Ray& ray) const {
     const Node *node = &nodes[root_idx], *node_stack[64];
-    u32 stack_ptr = 0;
+    volatile register u32 stack_ptr = 0;
     for (;;) {
         /* If the current node is a leaf... */
         if (node->is_leaf()) {
             /* Check if we hit any primitives */
+            f32 mind = BIG_F32;
             for (u32 i = 0; i < node->prim_count; i++) {
                 const VoxelVolume& prim = prims[node->left_first + i];
-                float dist = ray.intersects_aabb_sse(prim.aabb_min4, prim.aabb_max4);
-                if (dist < BIG_F32) return true;
+                f32 dist = ray.intersects_aabb_sse(prim.aabb_min4, prim.aabb_max4);
+                mind = std::min(mind, dist);
             }
+            if (mind < BIG_F32) return mind;
 
             /* Decend down the stack */
             if (stack_ptr == 0) break;
@@ -221,27 +223,20 @@ bool Bvh::intersect(const Ray& ray) const {
         float dist1 = ray.intersects_aabb_sse(child1->aabb_min4, child1->aabb_max4);
         float dist2 = ray.intersects_aabb_sse(child2->aabb_min4, child2->aabb_max4);
 #else
+        /* This function SHOULD BE inlined, otherwise it causes cache issues for the "node_stack" */
         glm::vec2 dists = ray.intersects_aabb2_avx(child1->aabb_min4, child1->aabb_max4,
                                                    child2->aabb_min4, child2->aabb_max4);
-        float dist1 = dists.x;
-        float dist2 = dists.y;
+        float dist1 = dists.x, dist2 = dists.y;
 #endif
+        /* Add child nodes to the stack if they were intersected */
+        node_stack[stack_ptr] = child1;
+        stack_ptr += static_cast<bool>(BIG_F32 - dist1);
+        node_stack[stack_ptr] = child2;
+        stack_ptr += static_cast<bool>(BIG_F32 - dist2);
 
-        /* Put the smallest distance upfront */
-        if (dist1 > dist2) {
-            std::swap(dist1, dist2);
-            std::swap(child1, child2);
-        }
-
-        /* Add child nodes to be checks if they were intersected */
-        if (dist1 == BIG_F32) {
-            if (stack_ptr == 0) break;
-            node = node_stack[--stack_ptr];
-        } else {
-            node = child1;
-            if (dist2 != BIG_F32) node_stack[stack_ptr++] = child2;
-        }
+        if (stack_ptr == 0) break;
+        node = node_stack[--stack_ptr];
     }
 
-    return false;
+    return BIG_F32;
 }

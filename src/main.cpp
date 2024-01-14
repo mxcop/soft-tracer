@@ -16,8 +16,8 @@
 
 constexpr int WINDOW_WIDTH = 1280;
 constexpr int WINDOW_HEIGHT = 720;
-// constexpr int WINDOW_WIDTH = 1920;
-// constexpr int WINDOW_HEIGHT = 1080;
+ //constexpr int WINDOW_WIDTH = 1920;
+ //constexpr int WINDOW_HEIGHT = 1080;
 
 void imgui_init(SDL_Window* window, SDL_GLContext context);
 

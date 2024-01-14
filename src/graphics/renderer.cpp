@@ -25,7 +25,7 @@ Renderer::Renderer(int screen_width, int screen_height)
     // vvv.emplace_back(glm::vec3(4.0f, 0.0f, 0.0f), glm::ivec3(8), glm::vec3(0.0f));
     // vvv.emplace_back(glm::vec3(-4.0f, 0.0f, 0.0f), glm::ivec3(8), glm::vec3(0.0f));
 
-#if 0
+#if 1
     for (int y = 0; y < 2; y++) {
         for (int x = 0; x < 2; x++) {
             for (int z = 0; z < 2; z++) {
@@ -39,7 +39,7 @@ Renderer::Renderer(int screen_width, int screen_height)
     std::mt19937 gen(seed());
     std::uniform_real_distribution<float> rand_s(-10, 10);
 
-    for (u32 i = 0; i < 32; i++) {
+    for (u32 i = 0; i < 16; i++) {
         vvv.emplace_back(glm::vec3(rand_s(gen), rand_s(gen), rand_s(gen)), glm::ivec3(8),
                          glm::vec3(0.0f));
     }
@@ -134,8 +134,9 @@ static uint32_t lerp_color(uint32_t color1, uint32_t color2, float t) {
 //     return 0x101010FF;
 // }
 static GLuint trace(const Ray& ray, const Bvh& bvh) {
-    if (bvh.intersect(ray)) {
-        return 0xFF0000FF;
+    f32 dist = bvh.intersect(ray);
+    if (dist < BIG_F32) {
+        return lerp_color(0xFFFFFFFF, 0x000000FF, dist / ray.t);
     }
     return 0x101010FF;
 }
@@ -157,7 +158,7 @@ void Renderer::render(float dt, float time, glm::vec3 cam_pos, glm::vec3 cam_dir
     // box.corners[1] = glm::vec3(2.5f);
 
 #if 1
-    constexpr i32 TILE_SIZE = 4;
+    constexpr i32 TILE_SIZE = 8;
 
     for (int y = 0; y < screen_height; y += TILE_SIZE) {
         for (int x = 0; x < screen_width; x += TILE_SIZE) {

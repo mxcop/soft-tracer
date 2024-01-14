@@ -24,7 +24,7 @@ struct Ray {
         };
         f128 inv_dir_4;
     };
-    f32 t = 2000.0f;
+    f32 t = 10000.0f;
 
     Ray() = delete;
     Ray(const glm::vec3& origin, const glm::vec3& dir);

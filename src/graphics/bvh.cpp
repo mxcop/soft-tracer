@@ -137,7 +137,7 @@ f32 Bvh::find_best_split_plane(const Node& node, i32& axis, f32& pos) const {
 }
 
 void Bvh::subdivide(Bvh::Node& node, int lvl) {
-    printf("node: {%i} [%i]\n", lvl, node.prim_count);
+    // printf("node: {%i} [%i]\n", lvl, node.prim_count);
     if (node.prim_count <= 2u) return;
 
     /* Determine split based on SAH */
@@ -202,9 +202,9 @@ f32 Bvh::intersect(const Ray& ray) const {
         if (node->is_leaf()) {
             /* Check if we hit any primitives */
             f32 mind = BIG_F32;
-            for (u32 i = 0; i < node->prim_count; i++) {
+            for (u32 i = 0; i < node->prim_count; ++i) {
                 const VoxelVolume& prim = prims[node->left_first + i];
-                f32 dist = ray.intersects_aabb_sse(prim.aabb_min4, prim.aabb_max4);
+                const f32 dist = ray.intersects_aabb_sse(prim.aabb_min4, prim.aabb_max4);
                 mind = std::min(dist, mind);
             }
             if (mind < BIG_F32) return mind;
@@ -217,12 +217,12 @@ f32 Bvh::intersect(const Ray& ray) const {
 
         /* In case we're not a leaf, see if we intersect the child nodes */
         const Node* child1 = &nodes[node->left_first];
-        const Node* child2 = child1 + 1;
+        const Node* child2 = &nodes[node->left_first + 1];
 
-        /* This function SHOULD BE inlined, otherwise it causes cache issues for the "node_stack" */
-        glm::vec2 dists = ray.intersects_aabb2_avx(child1->aabb_min4, child1->aabb_max4,
-                                                   child2->aabb_min4, child2->aabb_max4);
-        float dist1 = dists.x, dist2 = dists.y;
+        /* This function SHOULD BE inlined, otherwise it causes cache misses for the "node_stack" */
+        const glm::vec2 dists = ray.intersects_aabb2_avx(child1->aabb_min4, child1->aabb_max4,
+                                                         child2->aabb_min4, child2->aabb_max4);
+        f32 dist1 = dists.x, dist2 = dists.y;
 
         /* Child to be traversed first should be the closest one */
         if (dist1 < dist2) {
@@ -235,7 +235,7 @@ f32 Bvh::intersect(const Ray& ray) const {
         stack_ptr += static_cast<bool>(BIG_F32 - dist1);
         node_stack[stack_ptr] = child2;
         stack_ptr += static_cast<bool>(BIG_F32 - dist2);
-        
+
         /* Decend down the stack */
         if (stack_ptr == 0) break;
         node = node_stack[--stack_ptr];

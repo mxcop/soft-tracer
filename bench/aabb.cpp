@@ -40,7 +40,7 @@ static void bm_aabb_naive(benchmark::State& state) {
 
     glm::vec3 ro = glm::vec3(rand_s(gen), rand_s(gen), rand_s(gen));
     glm::vec3 rd = glm::normalize(glm::vec3(rand_s(gen), rand_s(gen), rand_s(gen)));
-    
+
     for (auto _ : state) {
         glm::vec3 bbmin = glm::vec3(rand_s(gen), rand_s(gen), rand_s(gen));
         glm::vec3 bbmax = bbmin + glm::vec3(rand_u(gen), rand_u(gen), rand_u(gen));
@@ -50,25 +50,26 @@ static void bm_aabb_naive(benchmark::State& state) {
         auto end = std::chrono::high_resolution_clock::now();
 
         auto elapsed_seconds =
-            std::chrono::duration_cast<std::chrono::duration<double>>(
-                end - start);
+            std::chrono::duration_cast<std::chrono::duration<double>>(end - start);
         state.SetIterationTime(elapsed_seconds.count());
     }
 }
 BENCHMARK(bm_aabb_naive)->UseManualTime();
 
 static bool ray_aabb_intersect_avx(f256 ro, f256 rd, f256 bbmin, f256 bbmax) {
-//    f256 rayOrigin = _mm256_loadu_ps(&ray.origin[0]);
-//    f256 rayDirection = _mm256_loadu_ps(&ray.inv_dir[0]);
-//    f256 boxMin = _mm256_loadu_ps(&bbmin[0]);
-//    f256 boxMax = _mm256_loadu_ps(&bbmax[0]);
+    //    f256 rayOrigin = _mm256_loadu_ps(&ray.origin[0]);
+    //    f256 rayDirection = _mm256_loadu_ps(&ray.inv_dir[0]);
+    //    f256 boxMin = _mm256_loadu_ps(&bbmin[0]);
+    //    f256 boxMax = _mm256_loadu_ps(&bbmax[0]);
 
     f256 tmin = _mm256_sub_ps(bbmin, ro);
     f256 tmax = _mm256_sub_ps(bbmax, ro);
 
     static const f256 bmask = _mm256_castsi256_ps(_mm256_set1_epi32(-1));
 
-    if (_mm256_movemask_ps(_mm256_or_ps(_mm256_cmp_ps(tmin, rd, _CMP_GT_OQ), _mm256_cmp_ps(tmax, _mm256_xor_ps(rd, bmask), _CMP_GT_OQ))) != 0)
+    if (_mm256_movemask_ps(
+            _mm256_or_ps(_mm256_cmp_ps(tmin, rd, _CMP_GT_OQ),
+                         _mm256_cmp_ps(tmax, _mm256_xor_ps(rd, bmask), _CMP_GT_OQ))) != 0)
         return false;
 
     tmin = _mm256_max_ps(tmin, _mm256_setzero_ps());
@@ -89,7 +90,7 @@ static void bm_aabb_avx(benchmark::State& state) {
     glm::vec3 ro = glm::vec3(rand_s(gen), rand_s(gen), rand_s(gen));
     glm::vec3 rd = glm::normalize(glm::vec3(rand_s(gen), rand_s(gen), rand_s(gen)));
     Ray ray = Ray(ro, rd);
-    
+
     for (auto _ : state) {
         glm::vec3 bbmin = glm::vec3(rand_s(gen), rand_s(gen), rand_s(gen));
         glm::vec3 bbmax = bbmin + glm::vec3(rand_u(gen), rand_u(gen), rand_u(gen));
@@ -104,12 +105,100 @@ static void bm_aabb_avx(benchmark::State& state) {
         auto end = std::chrono::high_resolution_clock::now();
 
         auto elapsed_seconds =
-            std::chrono::duration_cast<std::chrono::duration<double>>(
-                end - start);
+            std::chrono::duration_cast<std::chrono::duration<double>>(end - start);
         state.SetIterationTime(elapsed_seconds.count());
     }
 }
 BENCHMARK(bm_aabb_avx)->UseManualTime();
+
+/* Copied from <https://jacco.ompf2.com/2022/04/18/how-to-build-a-bvh-part-2-faster-rays/> */
+inline static float intersects_aabb_sse_jacco(const f128 bbmin, const f128 bbmax, const f128 ro,
+                                        const f128 ird) {
+    static __m128 mask4 = _mm_cmpeq_ps(_mm_setzero_ps(), _mm_set_ps(1, 0, 0, 0));
+    __m128 t1 = _mm_mul_ps(_mm_sub_ps(_mm_and_ps(bbmin, mask4), ro), ird);
+    __m128 t2 = _mm_mul_ps(_mm_sub_ps(_mm_and_ps(bbmax, mask4), ro), ird);
+    __m128 vmax4 = _mm_max_ps(t1, t2), vmin4 = _mm_min_ps(t1, t2);
+    float tmax = fmin(vmax4.m128_f32[0], fmin(vmax4.m128_f32[1], vmax4.m128_f32[2]));
+    float tmin = fmax(vmin4.m128_f32[0], fmax(vmin4.m128_f32[1], vmin4.m128_f32[2]));
+    if (tmax >= tmin && tmin < 1000.0f && tmax > 0)
+        return tmin;
+    else
+        return 1e30f;
+}
+
+static void bm_aabb_sse_jacco(benchmark::State& state) {
+    std::uniform_real_distribution<float> rand_s(-100, 100);
+    std::uniform_real_distribution<float> rand_u(0, 100);
+
+    glm::vec3 ro = glm::vec3(rand_s(gen), rand_s(gen), rand_s(gen));
+    glm::vec3 rd = glm::normalize(glm::vec3(rand_s(gen), rand_s(gen), rand_s(gen)));
+    Ray ray = Ray(ro, rd);
+
+    for (auto _ : state) {
+        glm::vec3 bbmin = glm::vec3(rand_s(gen), rand_s(gen), rand_s(gen));
+        glm::vec3 bbmax = bbmin + glm::vec3(rand_u(gen), rand_u(gen), rand_u(gen));
+
+        f128 rayOrigin = _mm_loadu_ps(&ray.origin[0]);
+        f128 rayDirection = _mm_loadu_ps(&ray.inv_dir[0]);
+        f128 boxMin = _mm_loadu_ps(&bbmin[0]);
+        f128 boxMax = _mm_loadu_ps(&bbmax[0]);
+
+        auto start = std::chrono::high_resolution_clock::now();
+        float r = intersects_aabb_sse_jacco(boxMin, boxMax, rayOrigin, rayDirection);
+        auto end = std::chrono::high_resolution_clock::now();
+        benchmark::DoNotOptimize(r);
+
+        auto elapsed_seconds =
+            std::chrono::duration_cast<std::chrono::duration<double>>(end - start);
+        state.SetIterationTime(elapsed_seconds.count());
+    }
+}
+BENCHMARK(bm_aabb_sse_jacco)->UseManualTime();
+
+/* Adapted from <https://jacco.ompf2.com/2022/04/18/how-to-build-a-bvh-part-2-faster-rays/> */
+inline static float intersects_aabb_sse(const f128 bbmin, const f128 bbmax, const f128 ro,
+                                        const f128 ird) {
+    /* Idea to use fmsub to save 1 instruction came from <http://www.joshbarczak.com/blog/?p=787> */
+    const f128 rd = _mm_mul_ps(ro, ird);
+    const f128 t1 = _mm_fmsub_ps(bbmin, ird, rd);
+    const f128 t2 = _mm_fmsub_ps(bbmax, ird, rd);
+
+    const f128 vmax4 = _mm_max_ps(t1, t2), vmin4 = _mm_min_ps(t1, t2);
+    const f32 tmax = dmin(vmax4.m128_f32[0], dmin(vmax4.m128_f32[1], vmax4.m128_f32[2]));
+    const f32 tmin = dmax(vmin4.m128_f32[0], dmax(vmin4.m128_f32[1], vmin4.m128_f32[2]));
+
+    const bool hit = (tmax > 0 && tmax >= tmin);
+    return hit ? tmin : BIG_F32;
+}
+
+static void bm_aabb_sse(benchmark::State& state) {
+    std::uniform_real_distribution<float> rand_s(-100, 100);
+    std::uniform_real_distribution<float> rand_u(0, 100);
+
+    glm::vec3 ro = glm::vec3(rand_s(gen), rand_s(gen), rand_s(gen));
+    glm::vec3 rd = glm::normalize(glm::vec3(rand_s(gen), rand_s(gen), rand_s(gen)));
+    Ray ray = Ray(ro, rd);
+
+    for (auto _ : state) {
+        glm::vec3 bbmin = glm::vec3(rand_s(gen), rand_s(gen), rand_s(gen));
+        glm::vec3 bbmax = bbmin + glm::vec3(rand_u(gen), rand_u(gen), rand_u(gen));
+
+        f128 rayOrigin = _mm_loadu_ps(&ray.origin[0]);
+        f128 rayDirection = _mm_loadu_ps(&ray.inv_dir[0]);
+        f128 boxMin = _mm_loadu_ps(&bbmin[0]);
+        f128 boxMax = _mm_loadu_ps(&bbmax[0]);
+
+        auto start = std::chrono::high_resolution_clock::now();
+        float r = intersects_aabb_sse(boxMin, boxMax, rayOrigin, rayDirection);
+        auto end = std::chrono::high_resolution_clock::now();
+        benchmark::DoNotOptimize(r);
+
+        auto elapsed_seconds =
+            std::chrono::duration_cast<std::chrono::duration<double>>(end - start);
+        state.SetIterationTime(elapsed_seconds.count());
+    }
+}
+BENCHMARK(bm_aabb_sse)->UseManualTime();
 
 static void bm_aabb_naive_x8(benchmark::State& state) {
     std::uniform_real_distribution<float> rand_s(-100, 100);
@@ -117,10 +206,9 @@ static void bm_aabb_naive_x8(benchmark::State& state) {
 
     glm::vec3 ro = glm::vec3(rand_s(gen), rand_s(gen), rand_s(gen));
     glm::vec3 rd = glm::normalize(glm::vec3(rand_s(gen), rand_s(gen), rand_s(gen)));
-    
+
     for (auto _ : state) {
-        for (int i = 0; i < 8; i++)
-        {
+        for (int i = 0; i < 8; i++) {
             glm::vec3 bbmin = glm::vec3(rand_s(gen), rand_s(gen), rand_s(gen));
             glm::vec3 bbmax = bbmin + glm::vec3(rand_u(gen), rand_u(gen), rand_u(gen));
 
@@ -129,8 +217,7 @@ static void bm_aabb_naive_x8(benchmark::State& state) {
             auto end = std::chrono::high_resolution_clock::now();
 
             auto elapsed_seconds =
-                std::chrono::duration_cast<std::chrono::duration<double>>(
-                    end - start);
+                std::chrono::duration_cast<std::chrono::duration<double>>(end - start);
             state.SetIterationTime(elapsed_seconds.count());
         }
     }
@@ -197,19 +284,18 @@ static void bm_aabb_simd_x8(benchmark::State& state) {
         auto end = std::chrono::high_resolution_clock::now();
 
         auto elapsed_seconds =
-            std::chrono::duration_cast<std::chrono::duration<double>>(
-                end - start);
+            std::chrono::duration_cast<std::chrono::duration<double>>(end - start);
         state.SetIterationTime(elapsed_seconds.count());
     }
 }
 BENCHMARK(bm_aabb_simd_x8)->UseManualTime();
 
-static inline float _mm256_hadd (const f256& a) {
-    f256 t1 = _mm256_hadd_ps(a,a);
-    f256 t2 = _mm256_hadd_ps(t1,t1);
-    __m128 t3 = _mm256_extractf128_ps(t2,1);
-    __m128 t4 = _mm_add_ss(_mm256_castps256_ps128(t2),t3);
-    return _mm_cvtss_f32(t4);        
+static inline float _mm256_hadd(const f256& a) {
+    f256 t1 = _mm256_hadd_ps(a, a);
+    f256 t2 = _mm256_hadd_ps(t1, t1);
+    __m128 t3 = _mm256_extractf128_ps(t2, 1);
+    __m128 t4 = _mm_add_ss(_mm256_castps256_ps128(t2), t3);
+    return _mm_cvtss_f32(t4);
 }
 
 static bool oct_ray_to_aabb_faster(const Ray& ray, const AABB_256* aabb, const f256* cache) {
@@ -281,8 +367,7 @@ static void bm_aabb_simd_fast_x8(benchmark::State& state) {
         auto end = std::chrono::high_resolution_clock::now();
 
         auto elapsed_seconds =
-            std::chrono::duration_cast<std::chrono::duration<double>>(
-                end - start);
+            std::chrono::duration_cast<std::chrono::duration<double>>(end - start);
         state.SetIterationTime(elapsed_seconds.count());
     }
 }

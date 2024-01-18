@@ -34,8 +34,8 @@ class Bvh {
 
    private:
     Node* nodes = nullptr;
-    u16 root_idx = 0, nodes_used = 1;
-    u16 size = 1;
+    u16 root_idx = 0, nodes_used = 2;
+    u16 size = 2;
 
     // TODO: use a vector of indices instead.
     // So we don't need to modify the actual vector.

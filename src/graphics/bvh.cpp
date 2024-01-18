@@ -5,10 +5,7 @@
 #include "vv.h"
 #include "ray.h"
 
-Bvh::Bvh(u32 size, const std::vector<VoxelVolume>& new_prims)
-    : size(size), nodes(new Node[size * 2 - 1]{}) {
-    build(new_prims);
-}
+Bvh::Bvh(u32 size, const std::vector<VoxelVolume>& new_prims) : size(size) { build(new_prims); }
 
 void update_node_bb(Bvh::Node& node, const std::vector<VoxelVolume>& prims) {
     node.aabb_min = glm::vec3(BIG_F32);
@@ -185,10 +182,13 @@ void Bvh::subdivide(Bvh::Node& node, int lvl) {
 
 void Bvh::build(const std::vector<VoxelVolume>& new_prims) {
     prims = new_prims;
+    nodes = (Node*)_aligned_malloc(sizeof(Node) * size * 2, 64);
+    if (!nodes) return;
 
     /* Initialize the root node */
     Node& root = nodes[root_idx];
     root.left_first = 0, root.prim_count = size;
+    nodes_used = 2; /* Skip the second node, for better child node cache alignment */
     update_node_bb(root, prims);
 
     /* Start the recursive subdivide */
@@ -197,17 +197,16 @@ void Bvh::build(const std::vector<VoxelVolume>& new_prims) {
 
 f32 Bvh::intersect(const Ray& ray) const {
     const Node *node = &nodes[root_idx], *node_stack[64];
+    f32 mind = BIG_F32;
     for (u32 stack_ptr = 0;;) {
         /* If the current node is a leaf... */
         if (node->is_leaf()) {
             /* Check if we hit any primitives */
-            f32 mind = BIG_F32;
             for (u32 i = 0; i < node->prim_count; ++i) {
                 const VoxelVolume& prim = prims[node->left_first + i];
                 const f32 dist = ray.intersects_aabb_sse(prim.aabb_min4, prim.aabb_max4);
                 mind = std::min(dist, mind);
             }
-            if (mind < BIG_F32) return mind;
 
             /* Decend down the stack */
             if (stack_ptr == 0) break;
@@ -220,26 +219,27 @@ f32 Bvh::intersect(const Ray& ray) const {
         const Node* child2 = &nodes[node->left_first + 1];
 
         /* This function SHOULD BE inlined, otherwise it causes cache misses for the "node_stack" */
-        const glm::vec2 dists = ray.intersects_aabb2_avx(child1->aabb_min4, child1->aabb_max4,
-                                                         child2->aabb_min4, child2->aabb_max4);
-        f32 dist1 = dists.x, dist2 = dists.y;
+        f32 dist1 = ray.intersects_aabb_sse(child1->aabb_min4, child1->aabb_max4);
+        f32 dist2 = ray.intersects_aabb_sse(child2->aabb_min4, child2->aabb_max4);
 
         /* Child to be traversed first should be the closest one */
-        if (dist1 < dist2) {
+        if (dist1 > dist2) {
             std::swap(dist1, dist2);
             std::swap(child1, child2);
         }
 
-        /* Add child nodes to the stack if they were intersected */
-        node_stack[stack_ptr] = child1;
-        stack_ptr += static_cast<bool>(BIG_F32 - dist1);
-        node_stack[stack_ptr] = child2;
-        stack_ptr += static_cast<bool>(BIG_F32 - dist2);
-
-        /* Decend down the stack */
-        if (stack_ptr == 0) break;
-        node = node_stack[--stack_ptr];
+        /* Traverse child nodes if they were intersected */
+        if (dist1 == BIG_F32) {
+            /* Decend down the stack */
+            if (stack_ptr == 0) break;
+            node = node_stack[--stack_ptr];
+        } else {
+            node = child1;
+            if (dist2 < BIG_F32) {
+                node_stack[stack_ptr++] = child2;
+            }
+        }
     }
 
-    return BIG_F32;
+    return (mind < BIG_F32) ? mind : BIG_F32;
 }

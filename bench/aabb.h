@@ -23,6 +23,9 @@ typedef double f64;
 
 typedef __m256 f256;
 typedef __m128 f128;
+typedef __m128i i128;
+
+constexpr f32 BIG_F32 = 1e30f;
 
 struct AABB_256 {
     union {
@@ -33,6 +36,9 @@ struct AABB_256 {
         };
     };
 };
+
+#define dmin(a, b) (a < b ? a : b)
+#define dmax(a, b) (a > b ? a : b)
 
 static inline glm::ivec3 signbit(glm::vec3 _X) throw() {
     return glm::ivec3(signbit(_X.x), signbit(_X.y), signbit(_X.z));

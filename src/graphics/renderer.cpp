@@ -102,7 +102,7 @@ void Renderer::render(float dt, float time, glm::vec3 cam_pos, glm::vec3 cam_dir
     // box.corners[1] = glm::vec3(2.5f);
 
 #if 1
-    constexpr i32 TILE_SIZE = 8;
+    constexpr i32 TILE_SIZE = 4;
 
     for (int y = 0; y < screen_height; y += TILE_SIZE) {
         for (int x = 0; x < screen_width; x += TILE_SIZE) {

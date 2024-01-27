@@ -56,9 +56,12 @@ inline float Ray::intersects_aabb_sse(const f128 bmin4, const f128 bmax4) const 
     const f128 t1 = _mm_fmsub_ps(bmin4, inv_dir_4, rd);
     const f128 t2 = _mm_fmsub_ps(bmax4, inv_dir_4, rd);
 
+    /* Find the near and far intersection point */
     const f128 vmax4 = _mm_max_ps(t1, t2), vmin4 = _mm_min_ps(t1, t2);
-    const f32 tmax = dmin(vmax4.m128_f32[0], dmin(vmax4.m128_f32[1], vmax4.m128_f32[2]));
-    const f32 tmin = dmax(vmin4.m128_f32[0], dmax(vmin4.m128_f32[1], vmin4.m128_f32[2]));
+    const f128 tmax4 = _mm_min_ss(vmax4, _mm_movehl_ps(vmax4, vmax4));
+    const f32 tmax = tmax4.m128_f32[0] < vmax4.m128_f32[1] ? tmax4.m128_f32[0] : vmax4.m128_f32[1];
+    const f128 tmin4 = _mm_max_ss(vmin4, _mm_movehl_ps(vmin4, vmin4));
+    const f32 tmin = tmin4.m128_f32[0] > vmin4.m128_f32[1] ? tmin4.m128_f32[0] : vmin4.m128_f32[1];
 
     const bool hit = (tmax > 0 && tmax >= tmin);
     return hit ? tmin : BIG_F32;

@@ -207,6 +207,7 @@ f32 Bvh::intersect(const Ray& ray) const {
                 const f32 dist = ray.intersects_aabb_sse(prim.aabb_min4, prim.aabb_max4);
                 mind = std::min(dist, mind);
             }
+            // if (mind < BIG_F32) return mind;
 
             /* Decend down the stack */
             if (stack_ptr == 0) break;
@@ -229,7 +230,7 @@ f32 Bvh::intersect(const Ray& ray) const {
         }
 
         /* Traverse child nodes if they were intersected */
-        if (dist1 == BIG_F32) {
+        if (dist1 >= BIG_F32) {
             /* Decend down the stack */
             if (stack_ptr == 0) break;
             node = node_stack[--stack_ptr];

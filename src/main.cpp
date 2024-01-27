@@ -16,8 +16,8 @@
 
 constexpr int WINDOW_WIDTH = 1280;
 constexpr int WINDOW_HEIGHT = 720;
- //constexpr int WINDOW_WIDTH = 1920;
- //constexpr int WINDOW_HEIGHT = 1080;
+// constexpr int WINDOW_WIDTH = 1920;
+// constexpr int WINDOW_HEIGHT = 1080;
 
 void imgui_init(SDL_Window* window, SDL_GLContext context);
 
@@ -46,6 +46,9 @@ static bool ray_to_aabb(const glm::vec3& ro, const glm::vec3& rd, const glm::vec
 }
 
 int main(int argc, char* argv[]) {
+    /* Set process to high prio */
+    // SetPriorityClass(GetCurrentProcess(), HIGH_PRIORITY_CLASS);
+
     SetProcessDPIAware(); /* <- handle high DPI screens on Windows */
     ImGui_ImplWin32_EnableDpiAwareness();
 
@@ -84,10 +87,10 @@ int main(int argc, char* argv[]) {
     float pitch = 0.0f, yaw = 0.0f;
     bool w = false, a = false, s = false, d = false, shift = false, space = false;
     bool running = true;
-    auto prev_time = std::chrono::steady_clock::now();
+    auto prev_time = std::chrono::high_resolution_clock::now();
     float time = 0.0f;
     while (running) {
-        auto curr_time = std::chrono::steady_clock::now();
+        auto curr_time = std::chrono::high_resolution_clock::now();
         float dt = (curr_time - prev_time).count() * 1e-9;
         time += dt;
         prev_time = curr_time;
@@ -151,16 +154,21 @@ int main(int argc, char* argv[]) {
         ImGui_ImplSDL3_NewFrame();
         ImGui::NewFrame();
 
-        auto start_time = std::chrono::steady_clock::now();
+        auto start_time = std::chrono::high_resolution_clock::now();
         renderer->render(dt, time, cam_pos, cam_dir);
-        auto end_time = std::chrono::steady_clock::now();
-        float render_time = (end_time - start_time).count() * 0.001f;
+        auto end_time = std::chrono::high_resolution_clock::now();
+        double render_time_us = static_cast<double>((end_time - start_time).count()) / 1000.0;
+        double render_time_ms = render_time_us / 1000.0;
+        double render_time_s = render_time_ms / 1000.0;
 
-        ImGui::Text("fps: %.2f", 1.0f / dt);
+        ImGui::Text("fps: %.2f, rays/s: %.2fM", 1.0f / dt,
+                    ((WINDOW_WIDTH * WINDOW_HEIGHT) / render_time_s) / 1'000'000.0);
         ImGui::Text("build time: %.2fms", renderer->db_build_time * 0.001f);
-        ImGui::Text("render time: %.2fms", render_time * 0.001f);
-        ImGui::Text("avg ray time: %.1fns", (render_time / (WINDOW_WIDTH * WINDOW_HEIGHT)) * 1000.0f);
-        ImGui::Text("avg ray time goal: %.1fns", (0.0166666 / (double)(WINDOW_WIDTH * WINDOW_HEIGHT)) * 1.0e+9);
+        ImGui::Text("render time: %.2fms", render_time_ms);
+        ImGui::Text("avg ray time: %.2fns",
+                    (render_time_us / (WINDOW_WIDTH * WINDOW_HEIGHT)) * 1'000.0);
+        ImGui::Text("avg ray time goal: %.1fns",
+                    (0.0166666 / (double)(WINDOW_WIDTH * WINDOW_HEIGHT)) * 1.0e+9);
 
         /* Draw the screen buffer */
         GLuint screen_buf = renderer->get_buf();

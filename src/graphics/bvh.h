@@ -42,11 +42,16 @@ class Bvh {
     std::vector<VoxelVolume> prims;
 
     void subdivide(Bvh::Node& node, int lvl);
-    void build(const std::vector<VoxelVolume>& prims);
 
    public:
     Bvh(){};
+    explicit Bvh(const std::vector<VoxelVolume>& new_prims);
     Bvh(u32 size, const std::vector<VoxelVolume>& new_prims);
+    ~Bvh() {
+        if (nodes) delete[] nodes;
+    };
+
+    void build(const std::vector<VoxelVolume>& prims);
 
     /**
      * @brief Evaluate the surface area heuristic of a node along an axis with a certain split

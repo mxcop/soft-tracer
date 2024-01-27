@@ -54,7 +54,9 @@ Renderer::Renderer(int screen_width, int screen_height)
 #endif
 
     auto start_time = std::chrono::steady_clock::now();
-    bvh = Bvh(vvv.size(), vvv);
+    // bvh = Bvh(vvv.size(), vvv);
+    bvh = Bvh();
+    bvh.build(vvv);
     auto end_time = std::chrono::steady_clock::now();
     db_build_time = (end_time - start_time).count() * 0.001f;
 }
@@ -77,8 +79,8 @@ static uint32_t lerp_color(uint32_t color1, uint32_t color2, float t) {
     return rb | ga;
 }
 
-static GLuint trace(const Ray& ray, const Bvh& bvh) {
-    f32 dist = bvh.intersect(ray);
+static GLuint trace(const Ray& ray, const Bvh* bvh) {
+    f32 dist = bvh->intersect(ray);
     if (dist < BIG_F32) {
         return lerp_color(0xFFFFFFFF, 0x000000FF, dist / (ray.t + 10.0f));
     }
@@ -121,7 +123,7 @@ void Renderer::render(float dt, float time, glm::vec3 cam_pos, glm::vec3 cam_dir
                     Ray ray = Ray(cam_pos, ray_dir);
 
                     // buffer[x + y * screen_width] = trace(cam_pos_4, ray_dir, box, box_model);
-                    buffer[ix + iy * screen_width] = trace(ray, bvh);
+                    buffer[ix + iy * screen_width] = trace(ray, &bvh);
                 }
             }
         }

@@ -5,6 +5,7 @@
 #include "vv.h"
 #include "ray.h"
 
+Bvh::Bvh(const std::vector<VoxelVolume>& new_prims) : size(new_prims.size()) { build(new_prims); }
 Bvh::Bvh(u32 size, const std::vector<VoxelVolume>& new_prims) : size(size) { build(new_prims); }
 
 void update_node_bb(Bvh::Node& node, const std::vector<VoxelVolume>& prims) {
@@ -182,7 +183,8 @@ void Bvh::subdivide(Bvh::Node& node, int lvl) {
 
 void Bvh::build(const std::vector<VoxelVolume>& new_prims) {
     prims = new_prims;
-    nodes = (Node*)_aligned_malloc(sizeof(Node) * size * 2, 64);
+    size = prims.size();
+    nodes = (Node*)_aligned_malloc(sizeof(Node) * size * 2, sizeof(Node) * 2);
     if (!nodes) return;
 
     /* Initialize the root node */
@@ -201,6 +203,7 @@ f32 Bvh::intersect(const Ray& ray) const {
     for (u32 stack_ptr = 0;;) {
         /* If the current node is a leaf... */
         if (node->is_leaf()) {
+            // _mm_prefetch((char*)&prims[node->left_first], _MM_HINT_T0);
             /* Check if we hit any primitives */
             for (u32 i = 0; i < node->prim_count; ++i) {
                 const VoxelVolume& prim = prims[node->left_first + i];

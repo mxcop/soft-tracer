@@ -210,22 +210,17 @@ f32 Bvh::intersect(const Ray& ray) const {
 
                 /* Hit occured */
                 if (dist < BIG_F32) {
-                    /* Get the origin of the ray in voxel space */
-                    // glm::vec3 ray_pos =
-                    //     ((ray.origin + ray.dir * dist) - prim.aabb_min);
-                    // glm::ivec3 vox_pos =
-                    //     glm::ivec3(floor(ray_pos.x), floor(ray_pos.y), floor(ray_pos.z));
                     const glm::ivec3 prim_size = (prim.aabb_max - prim.aabb_min) * VOXELS_PER_UNIT;
 
                     /* Move up to the edge of the bounding box */
-                    glm::vec3 p = ray.origin + ray.dir * (dist + 0.01f);
+                    const glm::vec3 p = ray.origin + ray.dir * (dist + 0.01f);
 
                     /* Voxel position */
-                    glm::vec3 vp = (p - prim.aabb_min) * VOXELS_PER_UNIT;
+                    const glm::vec3 vp = (p - prim.aabb_min) * VOXELS_PER_UNIT;
                     glm::vec3 idx = glm::floor(vp);
 
                     /* Ray direction sign mask */
-                    glm::vec3 srd = glm::sign(ray.dir);
+                    const glm::vec3 srd = glm::sign(ray.dir);
                     glm::vec3 sd = ((idx - vp) + (srd * .5f) + .5f) * ray.inv_dir;
 
                     for (int i = 0; i < 256; ++i) {

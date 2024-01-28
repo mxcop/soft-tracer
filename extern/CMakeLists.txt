@@ -45,7 +45,6 @@ target_include_directories(imgui
 )
 target_link_libraries(main PRIVATE imgui)
 
-# BENCHMARK
-# https://github.com/google/benchmark
-# set(BENCHMARK_DOWNLOAD_DEPENDENCIES ON CACHE BOOL "" FORCE)
-# add_subdirectory("../extern/benchmark")
+# OGT (Voxel model loading)
+# https://github.com/jpaver/opengametools
+add_subdirectory("ogt")

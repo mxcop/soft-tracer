@@ -203,11 +203,16 @@ f32 Bvh::intersect(const Ray& ray) const {
     for (u32 stack_ptr = 0;;) {
         /* If the current node is a leaf... */
         if (node->is_leaf()) {
-            // _mm_prefetch((char*)&prims[node->left_first], _MM_HINT_T0);
             /* Check if we hit any primitives */
             for (u32 i = 0; i < node->prim_count; ++i) {
                 const VoxelVolume& prim = prims[node->left_first + i];
                 const f32 dist = ray.intersects_aabb_sse(prim.aabb_min4, prim.aabb_max4);
+
+                /* Hit occured */
+                //if (dist < BIG_F32) {
+                //    
+                //}
+
                 mind = std::min(dist, mind);
             }
             // if (mind < BIG_F32) return mind;

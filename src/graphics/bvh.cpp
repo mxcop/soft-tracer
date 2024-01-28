@@ -206,14 +206,83 @@ f32 Bvh::intersect(const Ray& ray) const {
             /* Check if we hit any primitives */
             for (u32 i = 0; i < node->prim_count; ++i) {
                 const VoxelVolume& prim = prims[node->left_first + i];
-                const f32 dist = ray.intersects_aabb_sse(prim.aabb_min4, prim.aabb_max4);
+                glm::vec2 dist = ray.intersection_aabb_sse(prim.aabb_min4, prim.aabb_max4);
 
-                /* Hit occured */
-                //if (dist < BIG_F32) {
-                //    
-                //}
+/* Hit occured */
+#if 1
+                if (dist.x < BIG_F32) {
+                    /* Get the origin of the ray in voxel space */
+                    // glm::vec3 ray_pos =
+                    //     ((ray.origin + ray.dir * dist) - prim.aabb_min);
+                    // glm::ivec3 vox_pos =
+                    //     glm::ivec3(floor(ray_pos.x), floor(ray_pos.y), floor(ray_pos.z));
 
-                mind = std::min(dist, mind);
+                    const f32 tmin = dist.x, tmax = dist.y;
+
+                    const glm::vec3 ray_start = (ray.origin + ray.dir * tmin);
+                    const glm::vec3 ray_end = (ray.origin + ray.dir * tmax);
+
+                    glm::ivec3 vox_pos = glm::floor((ray_start - prim.aabb_min) * VOXELS_PER_UNIT);
+                    const glm::ivec3 vox_end =
+                        glm::floor((ray_end - prim.aabb_min) * VOXELS_PER_UNIT);
+
+                    glm::ivec3 ray_step;
+                    glm::vec3 t_delta;
+                    glm::vec3 t_max;
+                    for (int i = 0; i < 3; i++) {
+                        if (ray.dir[i] > 0.0f) {
+                            ray_step[i] = 1;
+                            t_delta[i] = VOXELS_PER_UNIT / ray.dir[i];
+                            t_max[i] = tmin + (prim.aabb_min[i] + vox_pos[i] * VOXELS_PER_UNIT -
+                                               ray_start[i]) /
+                                                  ray.dir[i];
+                        } else if (ray.dir[i] < 0.0f) {
+                            ray_step[i] = -1;
+                            t_delta[i] = VOXELS_PER_UNIT / -ray.dir[i];
+                            const size_t pre_idx = vox_pos[i] - 1;
+                            t_max[i] = tmin + (prim.aabb_min[i] + pre_idx * VOXELS_PER_UNIT -
+                                               ray_start[i]) /
+                                                  ray.dir[i];
+                        } else {
+                            ray_step[i] = 0;
+                            t_delta[i] = tmax;
+                            t_max[i] = tmax;
+                        }
+                    }
+
+                    int si = 0;
+                    bool hit = false;
+                    while (si < 200 && vox_pos.x != vox_end.x) {
+                        if (vox_pos == glm::ivec3(1)) {
+                            glm::vec3 final_pos =
+                                glm::vec3(vox_pos) * VOXELS_PER_UNIT + prim.aabb_min;
+                            dist.x = glm::distance(final_pos, ray.origin);
+                            hit = true;
+                            break;
+                        }
+
+                        if (t_max.x < t_max.y && t_max.x < t_max.z) {
+                            // X-axis traversal.
+                            vox_pos.x += ray_step.x;
+                            t_max.x += t_delta.x;
+                        } else if (t_max.y < t_max.z) {
+                            // Y-axis traversal.
+                            vox_pos.y += ray_step.y;
+                            t_max.y += t_delta.y;
+                        } else {
+                            // Z-axis traversal.
+                            vox_pos.z += ray_step.z;
+                            t_max.z += t_delta.z;
+                        }
+                        si++;
+                    }
+                    if (not hit) dist.x = BIG_F32;
+
+                    // dist = (vox_pos.x % 2 == 0) ? 1000.0f : dist;
+                }
+#endif
+
+                mind = std::min(dist.x, mind);
             }
             // if (mind < BIG_F32) return mind;
 
@@ -227,15 +296,15 @@ f32 Bvh::intersect(const Ray& ray) const {
         const Node* child1 = &nodes[node->left_first];
         const Node* child2 = &nodes[node->left_first + 1];
 
-        /* This function SHOULD BE inlined, otherwise it causes cache misses for the "node_stack" */
-        #if 1
+/* This function SHOULD BE inlined, otherwise it causes cache misses for the "node_stack" */
+#if 1
         f32 dist1 = ray.intersects_aabb_sse(child1->aabb_min4, child1->aabb_max4);
         f32 dist2 = ray.intersects_aabb_sse(child2->aabb_min4, child2->aabb_max4);
-        #else
+#else
         const glm::vec2 dists = ray.intersects_aabb2_avx(child1->aabb_min4, child1->aabb_max4,
                                                          child2->aabb_min4, child2->aabb_max4);
         f32 dist1 = dists.x, dist2 = dists.y;
-        #endif
+#endif
 
         /* Child to be traversed first should be the closest one */
         if (dist1 > dist2) {

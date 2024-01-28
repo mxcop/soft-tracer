@@ -25,5 +25,6 @@ constexpr f32 BIG_F32 = 1e30f;
 
 #include <vector>
 
+#define GLM_SWIZZLE
 #include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>

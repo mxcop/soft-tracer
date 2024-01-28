@@ -83,8 +83,8 @@ int main(int argc, char* argv[]) {
     glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
 
-    glm::vec3 cam_pos = glm::vec3(20);
-    float pitch = 0.0f, yaw = 0.0f;
+    glm::vec3 cam_pos = glm::vec3(-0.78f, 10.82f, 13.47f);
+    float pitch = -35.0f, yaw = -75.0f;
     bool w = false, a = false, s = false, d = false, shift = false, space = false;
     bool running = true;
     auto prev_time = std::chrono::high_resolution_clock::now();
@@ -169,6 +169,9 @@ int main(int argc, char* argv[]) {
                     (render_time_us / (WINDOW_WIDTH * WINDOW_HEIGHT)) * 1'000.0);
         ImGui::Text("avg ray time goal: %.1fns",
                     (0.0166666 / (double)(WINDOW_WIDTH * WINDOW_HEIGHT)) * 1.0e+9);
+        ImGui::Separator();
+        ImGui::Text("cam pos: %.2f, %.2f, %.2f", cam_pos.x, cam_pos.y, cam_pos.z);
+        ImGui::Text("cam angle: %.2f, %.2f", pitch, yaw);
 
         /* Draw the screen buffer */
         GLuint screen_buf = renderer->get_buf();

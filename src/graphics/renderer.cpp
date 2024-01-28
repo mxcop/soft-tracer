@@ -22,7 +22,7 @@ Renderer::Renderer(int screen_width, int screen_height)
 
     std::vector<VoxelVolume> vvv;
 
-#if 1
+#if 0
     // for (int y = 0; y < 2; y++) {
     //     for (int x = 0; x < 2; x++) {
     //         for (int z = 0; z < 2; z++) {
@@ -43,14 +43,17 @@ Renderer::Renderer(int screen_width, int screen_height)
         }
     }
 #else
-    std::random_device seed;
-    std::mt19937 gen(seed());
-    std::uniform_real_distribution<float> rand_s(-10, 10);
+    // std::random_device seed;
+    // std::mt19937 gen(seed());
+    // std::uniform_real_distribution<float> rand_s(-10, 10);
 
-    for (u32 i = 0; i < 16; i++) {
-        vvv.emplace_back(glm::vec3(rand_s(gen), rand_s(gen), rand_s(gen)), glm::ivec3(8),
-                         glm::vec3(0.0f));
-    }
+    // for (u32 i = 0; i < 16; i++) {
+    //     vvv.emplace_back(glm::vec3(rand_s(gen), rand_s(gen), rand_s(gen)), glm::ivec3(8),
+    //                      glm::vec3(0.0f));
+    // }
+    vvv.emplace_back(glm::vec3(0.0f, 0.0f, 0.0f), glm::ivec3(8, 8, 8), glm::vec3(0.0f));
+    vvv.emplace_back(glm::vec3(2.0f, 0.0f, 0.0f), glm::ivec3(16, 16, 16), glm::vec3(0.0f));
+    vvv.emplace_back(glm::vec3(5.0f, 0.0f, 0.0f), glm::ivec3(32, 32, 32), glm::vec3(0.0f));
 #endif
 
     auto start_time = std::chrono::steady_clock::now();
@@ -146,7 +149,7 @@ void Renderer::render(float dt, float time, glm::vec3 cam_pos, glm::vec3 cam_dir
     }
 #endif
 
-    //draw_aabb(glm::vec3(5.0f), glm::vec3(10.0f), 0x00FF00FF, view, proj);
+    // draw_aabb(glm::vec3(5.0f), glm::vec3(10.0f), 0x00FF00FF, view, proj);
 
     //{
     //    glm::vec3 p0 = {5.0f, 5.0f, 5.0f}, p1 = {10.0f, 5.0f, 5.0f};

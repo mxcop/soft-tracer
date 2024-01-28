@@ -7,6 +7,7 @@
 #include <imgui.h>
 
 #include "ray.h"
+#include "loaders/vox.h"
 
 Renderer::Renderer(int screen_width, int screen_height)
     : screen_width(screen_width),
@@ -51,9 +52,14 @@ Renderer::Renderer(int screen_width, int screen_height)
     //     vvv.emplace_back(glm::vec3(rand_s(gen), rand_s(gen), rand_s(gen)), glm::ivec3(8),
     //                      glm::vec3(0.0f));
     // }
-    vvv.emplace_back(glm::vec3(0.0f, 0.0f, 0.0f), glm::ivec3(8, 8, 8), glm::vec3(0.0f));
-    vvv.emplace_back(glm::vec3(2.0f, 0.0f, 0.0f), glm::ivec3(16, 16, 16), glm::vec3(0.0f));
-    vvv.emplace_back(glm::vec3(5.0f, 0.0f, 0.0f), glm::ivec3(32, 32, 32), glm::vec3(0.0f));
+
+    std::vector<u8> teapot_vox = load_vox_model("public/models/teapot.vox");
+
+    // vvv.emplace_back(glm::vec3(0.0f, 0.0f, 0.0f), glm::ivec3(8, 8, 8), glm::vec3(0.0f));
+    // vvv.emplace_back(glm::vec3(2.0f, 0.0f, 0.0f), glm::ivec3(16, 16, 16), glm::vec3(0.0f));
+    // vvv.emplace_back(glm::vec3(5.0f, 0.0f, 0.0f), glm::ivec3(32, 32, 32), glm::vec3(0.0f));
+    vvv.emplace_back(glm::vec3(0.0f /* 11.0f */, 0.0f, 0.0f), glm::ivec3(64, 64, 64),
+                     glm::vec3(0.0f), teapot_vox);
 #endif
 
     auto start_time = std::chrono::steady_clock::now();

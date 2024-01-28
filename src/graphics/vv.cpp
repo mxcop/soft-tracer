@@ -9,6 +9,13 @@ VoxelVolume::VoxelVolume(glm::vec3 pos, glm::ivec3 size, glm::vec3 rot) {
     aabb_max = pos + glm::vec3(size) / VOXELS_PER_UNIT;
 }
 
+VoxelVolume::VoxelVolume(glm::vec3 pos, glm::ivec3 size, glm::vec3 rot, std::vector<u8> voxels) : voxels(voxels) {
+    glm::vec3 half_size = (glm::vec3(size) / VOXELS_PER_UNIT) / 2.0f;
+    // aabb = AABB(pos - half_size, pos + half_size);
+    aabb_min = pos;
+    aabb_max = pos + glm::vec3(size) / VOXELS_PER_UNIT;
+}
+
 void VoxelVolume::get_bounds(glm::vec3& out_min, glm::vec3& out_max) const {
     //glm::mat4 rot_mtx = glm::toMat4(glm::quat(rot));
 

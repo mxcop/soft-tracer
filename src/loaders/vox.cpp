@@ -28,7 +28,7 @@ std::vector<u8> load_vox_model(const char* path) {
             for (uint32_t x = 0; x < model->size_x; x++) {
                 /* In & out voxel index */
                 uint32_t vi = x + model->size_x * (y + model->size_z * z);
-                uint32_t vo = x + model->size_x * ((model->size_z - 1 - z) + model->size_y * y);
+                uint32_t vo = x + model->size_x * (z + model->size_y * y);
 
                 uint8_t color_index = model->voxel_data[vi];
                 bool is_voxel_solid = (color_index != 0);

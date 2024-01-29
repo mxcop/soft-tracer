@@ -20,7 +20,7 @@ std::vector<u8> load_vox_model(const char* path) {
     const ogt_vox_model* model = scene->models[0];
 
     std::vector<u8> voxel_data;
-    voxel_data.resize((size_t)model->size_x * model->size_y * model->size_z);
+    voxel_data.resize(model->size_x * model->size_y * model->size_z);
 
     /* Store the voxel data */
     for (uint32_t z = 0; z < model->size_z; z++) {

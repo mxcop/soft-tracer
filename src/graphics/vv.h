@@ -1,6 +1,7 @@
 #pragma once
 
 #include "aabb.h"
+#include "ray.h"
 
 constexpr float VOXELS_PER_UNIT = 8;
 
@@ -35,4 +36,6 @@ struct VoxelVolume {
     void get_bounds(glm::vec3& out_min, glm::vec3& out_max) const;
     glm::vec3 center() const;
     glm::mat4 get_model() const;
+
+    f32 intersect(const Ray& ray, const f32 tmin) const;
 };

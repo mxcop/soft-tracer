@@ -43,3 +43,49 @@ glm::mat4 VoxelVolume::get_model() const {
     //model *= rot_mtx;
     return model;
 }
+
+f32 VoxelVolume::intersect(const Ray& ray, const f32 tmin) const {
+    const glm::ivec3 prim_size = (aabb_max - aabb_min) * VOXELS_PER_UNIT;
+    const int prim_max = prim_size.x * prim_size.y * prim_size.z;
+
+    /* Move up to the edge of the bounding box */
+    const glm::vec3 p = ray.origin + ray.dir * (tmin + 0.1f);
+
+    /* Voxel position */
+    glm::vec3 vp = (p - aabb_min) * VOXELS_PER_UNIT;
+    glm::ivec3 idx = glm::floor(vp);
+
+    /* Ray direction sign mask */
+    const glm::vec3 srd = glm::sign(ray.dir);
+    glm::vec3 sd = (glm::vec3(idx) - vp + srd) * ray.inv_dir;
+
+    for (int i = 0; i < 256; ++i) {
+        size_t ii = ((size_t)idx.z * prim_size.x * prim_size.y) + ((size_t)idx.y * prim_size.x) + idx.x;
+        if (ii < 0 || ii >= prim_max) {
+            break;
+        }
+        /* Index the voxel data */
+        u8 voxel = voxels[ii];
+
+        if (voxel > 0) {
+            return voxel * 50.0f;
+        }
+
+        /* Compute the step mask */
+        glm::vec3 yzx = sd.yzx, zxy = sd.zxy;
+        glm::vec3 mask = glm::lessThanEqual(sd, glm::min(yzx, zxy));
+        // vec3 mask = vec3(lessThanEqual(sd.xyz, min(sd.yzx, sd.zxy)));
+
+        /* Step to the next voxel */
+        sd += mask * srd * ray.inv_dir;
+        idx += mask * srd;
+        vp += mask * ray.dir;
+
+        /* Check if we're still within the bounding volume */
+        if (glm::any(glm::lessThan(idx, glm::ivec3(0))) ||
+            glm::any(glm::greaterThanEqual(idx, prim_size))) {
+            break;
+        }
+    }
+    return BIG_F32; // change to 10'000.0f for outline
+}

@@ -210,50 +210,7 @@ f32 Bvh::intersect(const Ray& ray) const {
 
                 /* Hit occured */
                 if (dist < BIG_F32) {
-                    const glm::ivec3 prim_size = (prim.aabb_max - prim.aabb_min) * VOXELS_PER_UNIT;
-
-                    /* Move up to the edge of the bounding box */
-                    const glm::vec3 p = ray.origin + ray.dir * (dist + 0.1f);
-
-                    /* Voxel position */
-                    const glm::vec3 vp = (p - prim.aabb_min) * VOXELS_PER_UNIT;
-                    glm::ivec3 idx = glm::floor(vp);
-                     
-                    /* Ray direction sign mask */
-                    const glm::vec3 srd = glm::sign(ray.dir);
-                    glm::vec3 sd = (glm::vec3(idx) - vp + srd) * ray.inv_dir;
-
-                    for (int i = 0; i < 256; ++i) {
-                        size_t ii = ((size_t)idx.z * prim_size.x * prim_size.y) +
-                                    ((size_t)idx.y * prim_size.x) + idx.x;
-                        if (prim.voxels.size() <= ii) {
-                            break;
-                        }
-                        /* Index the voxel data */
-                        u8 voxel = prim.voxels[ii];
-
-                        if (voxel > 0) {
-                            // dist = glm::distance(ray.origin, prim.aabb_min + (vp / VOXELS_PER_UNIT));
-                            dist = voxel * 50.0f;
-                            break;
-                        }
-
-                        /* Compute the step mask */
-                        glm::vec3 yzx = sd.yzx, zxy = sd.zxy;
-                        glm::vec3 mask = glm::lessThanEqual(sd, glm::min(yzx, zxy));
-                        // vec3 mask = vec3(lessThanEqual(sd.xyz, min(sd.yzx, sd.zxy)));
-
-                        /* Step to the next voxel */
-                        sd += mask * srd * ray.inv_dir;
-                        idx += mask * srd;
-
-                        /* Check if we're still within the bounding volume */
-                        if (glm::any(glm::lessThan(idx, glm::ivec3(0))) ||
-                            glm::any(glm::greaterThanEqual(idx, prim_size))) {
-                            dist = BIG_F32;  // change to 10'000.0f for outline
-                            break;
-                        }
-                    }
+                    dist = prim.intersect(ray, dist);
                     mind = std::min(dist, mind);
                 }
             }

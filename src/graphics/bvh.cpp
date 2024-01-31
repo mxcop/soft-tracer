@@ -209,10 +209,10 @@ f32 Bvh::intersect(const Ray& ray) const {
                 f32 dist = ray.intersects_aabb_sse(prim.aabb_min4, prim.aabb_max4);
 
                 /* Hit occured */
-                if (dist < BIG_F32) {
+                if (prim.voxels.size() > 0 && dist < BIG_F32) {
                     dist = prim.intersect(ray, dist);
-                    mind = std::min(dist, mind);
                 }
+                mind = std::min(dist, mind);
             }
             // if (mind < BIG_F32) return mind;
 

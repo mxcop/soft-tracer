@@ -49,37 +49,35 @@ f32 VoxelVolume::intersect(const Ray& ray, const f32 tmin) const {
     const int prim_max = prim_size.x * prim_size.y * prim_size.z;
 
     /* Move up to the edge of the bounding box */
-    const glm::vec3 p = ray.origin + ray.dir * (tmin + 0.1f);
+    const glm::vec3 sp = ray.origin + ray.dir * (tmin + 0.0001f);
+    glm::vec3 p = ray.origin + ray.dir * (tmin + 0.0001f);
 
     /* Voxel position */
-    glm::vec3 vp = (p - aabb_min) * VOXELS_PER_UNIT;
-    glm::ivec3 idx = glm::floor(vp);
+    const glm::vec3 vp = (sp - aabb_min) * VOXELS_PER_UNIT;
+    glm::ivec3 idx = glm::min(glm::max(glm::ivec3(glm::floor(vp)), glm::ivec3(0)), prim_size);
 
     /* Ray direction sign mask */
-    const glm::vec3 srd = glm::sign(ray.dir);
-    glm::vec3 sd = (glm::vec3(idx) - vp + srd) * ray.inv_dir;
+    glm::vec3 srd = glm::sign(ray.dir);
+    glm::vec3 sd = (glm::vec3(idx) - vp + .5f - .5f * srd) * ray.inv_dir;
 
     for (int i = 0; i < 256; ++i) {
         size_t ii = ((size_t)idx.z * prim_size.x * prim_size.y) + ((size_t)idx.y * prim_size.x) + idx.x;
-        if (ii < 0 || ii >= prim_max) {
-            break;
-        }
+
         /* Index the voxel data */
         u8 voxel = voxels[ii];
 
         if (voxel > 0) {
-            return voxel * 50.0f;
+            return tmin + glm::distance(sp, p);
         }
 
         /* Compute the step mask */
         glm::vec3 yzx = sd.yzx, zxy = sd.zxy;
         glm::vec3 mask = glm::lessThanEqual(sd, glm::min(yzx, zxy));
-        // vec3 mask = vec3(lessThanEqual(sd.xyz, min(sd.yzx, sd.zxy)));
 
         /* Step to the next voxel */
         sd += mask * srd * ray.inv_dir;
         idx += mask * srd;
-        vp += mask * ray.dir;
+        p += mask * srd * (ray.dir / VOXELS_PER_UNIT);
 
         /* Check if we're still within the bounding volume */
         if (glm::any(glm::lessThan(idx, glm::ivec3(0))) ||
@@ -87,5 +85,27 @@ f32 VoxelVolume::intersect(const Ray& ray, const f32 tmin) const {
             break;
         }
     }
-    return BIG_F32; // change to 10'000.0f for outline
+    return BIG_F32;
 }
+
+//glm::vec3 normal;
+//glm::vec3 ray_pos = ray.origin + ray.dir * (tmin + 0.1f);
+//glm::ivec3 ray_idx = glm::floor(ray.origin);
+//glm::vec3 ray_dir_sign = glm::sign(ray.dir);
+//
+///* Idk exactly how this works, so let's call it "magic" */
+//glm::vec3 ray_magic = (glm::vec3(ray_idx) - ray.origin + .5f + .5f * ray_dir_sign) * ray.inv_dir;
+//
+//float t;
+//for (int i = 0; i < 128; i++) {
+//    glm::vec3 yzx = ray_magic.xyz, zxy = ray_magic.zxy;
+//    glm::vec3 ray_step = glm::step(ray_magic, yzx) * glm::step(ray_magic, zxy);
+//    ray_magic += ray_step * ray.inv_dir * ray_dir_sign;
+//    ray_idx += ray_step * ray_dir_sign;
+//    normal = ray_step * -ray_dir_sign;
+//
+//    glm::vec3 d = (glm::vec3(ray_idx) - ray.origin + .5f - .5f * ray_dir_sign) * ray.inv_dir;
+//    t = std::max(d.x, std::max(d.y, d.z));
+//
+//    if (map(p) || t > ray.t) break;
+//}

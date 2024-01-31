@@ -3,7 +3,13 @@
 #include "aabb.h"
 
 Ray::Ray(const glm::vec3& origin, const glm::vec3& dir)
-    : origin(origin), dir(dir), inv_dir(1.0f / dir) {}
+    : origin(origin), dir(dir) {
+    /* to avoid division by zero */
+    if (this->dir.x == 0) this->dir.x = 0.00000001f;
+    if (this->dir.y == 0) this->dir.y = 0.00000001f;
+    if (this->dir.z == 0) this->dir.z = 0.00000001f;
+    inv_dir = glm::vec3(1.0f / this->dir);
+}
 
 float Ray::intersects_aabb(const AABB& aabb) const {
     float tmin = 0.0, tmax = INFINITY;

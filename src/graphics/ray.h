@@ -24,7 +24,7 @@ struct alignas(64) Ray {
         };
         f128 inv_dir_4;
     };
-    f32 t = 10000.0f;
+    f32 t = 32.0f;
 
     Ray() = delete;
     Ray(const glm::vec3& origin, const glm::vec3& dir);
@@ -59,7 +59,11 @@ struct alignas(64) Ray {
         const f128 tmin4 = _mm_max_ps(vmin4, _mm_movehl_ps(vmin4, vmin4));
         const f32 tmin = _max(tmin4.m128_f32[0], vmin4.m128_f32[1]);
 
-        const bool hit = (tmax > 0 && tmin < t && tmin < tmax);
+        /* Handle being inside the AABB */
+        if (tmax <= 0) return BIG_F32;
+        if (tmin <= 0) return 0;
+
+        const bool hit = (tmin < t && tmin <= tmax);
         return hit ? tmin : BIG_F32;
     }
 #else
@@ -79,7 +83,7 @@ struct alignas(64) Ray {
         const float tmax = _min(vmax4.m128_f32[0], _min(vmax4.m128_f32[1], vmax4.m128_f32[2]));
         const float tmin = _max(vmin4.m128_f32[0], _max(vmin4.m128_f32[1], vmin4.m128_f32[2]));
 
-        const bool hit = (tmax > 0 && tmin < t && tmin < tmax);
+        const bool hit = (tmax > 0 && tmin < t && tmin <= tmax);
         return hit ? tmin : BIG_F32;
     }
 #endif

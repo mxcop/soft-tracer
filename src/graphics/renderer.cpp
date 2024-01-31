@@ -55,10 +55,10 @@ Renderer::Renderer(int screen_width, int screen_height)
 
     std::vector<u8> teapot_vox = load_vox_model("public/models/teapot.vox");
 
-    // vvv.emplace_back(glm::vec3(0.0f, 0.0f, 0.0f), glm::ivec3(8, 8, 8), glm::vec3(0.0f));
-    // vvv.emplace_back(glm::vec3(2.0f, 0.0f, 0.0f), glm::ivec3(16, 16, 16), glm::vec3(0.0f));
-    // vvv.emplace_back(glm::vec3(5.0f, 0.0f, 0.0f), glm::ivec3(32, 32, 32), glm::vec3(0.0f));
-    vvv.emplace_back(glm::vec3(0.0f /* 11.0f */, 0.0f, 0.0f), glm::ivec3(64, 64, 64),
+    vvv.emplace_back(glm::vec3(0.0f, 0.0f, 0.0f), glm::ivec3(8, 8, 8), glm::vec3(0.0f));
+    vvv.emplace_back(glm::vec3(2.0f, 0.0f, 0.0f), glm::ivec3(16, 16, 16), glm::vec3(0.0f));
+    vvv.emplace_back(glm::vec3(5.0f, 0.0f, 0.0f), glm::ivec3(32, 32, 32), glm::vec3(0.0f));
+    vvv.emplace_back(glm::vec3(/*0.0f*/ 11.0f, 0.0f, 0.0f), glm::ivec3(64, 64, 64),
                      glm::vec3(0.0f), teapot_vox);
 #endif
 
@@ -128,7 +128,7 @@ void Renderer::render(float dt, float time, glm::vec3 cam_pos, glm::vec3 cam_dir
                     ray_end_world /= ray_end_world.w;
 
                     /* NOTE: this normalize is very expensive! */
-                    glm::vec3 ray_dir = glm::normalize(ray_end_world - cam_pos_4);
+                    glm::vec3 ray_dir = glm::normalize(glm::vec3(ray_end_world - cam_pos_4));
                     Ray ray = Ray(cam_pos, ray_dir);
 
                     // buffer[x + y * screen_width] = trace(cam_pos_4, ray_dir, box, box_model);

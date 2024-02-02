@@ -206,13 +206,13 @@ f32 Bvh::intersect(const Ray& ray) const {
             /* Check if we hit any primitives */
             for (u32 i = 0; i < node->prim_count; ++i) {
                 const VoxelVolume& prim = prims[node->left_first + i];
-                f32 dist = ray.intersects_aabb_sse(prim.aabb_min4, prim.aabb_max4);
+                glm::vec2 intr = ray.intersection_aabb_sse(prim.aabb_min4, prim.aabb_max4);
 
                 /* Hit occured */
-                if (prim.voxels.size() > 0 && dist < BIG_F32) {
-                    dist = prim.intersect(ray, dist);
+                if (prim.data[0].size() > 0 && intr.x < BIG_F32) {
+                    intr.x = prim.intersect(ray, intr.x, intr.y);
                 }
-                mind = std::min(dist, mind);
+                mind = std::min(intr.x, mind);
             }
             // if (mind < BIG_F32) return mind;
 

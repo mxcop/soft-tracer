@@ -125,10 +125,10 @@ void Renderer::render(float dt, float time, glm::vec3 cam_pos, glm::vec3 cam_dir
                                           ((float)iy / (float)screen_height - 0.5f) * 2.0f, 0.0,
                                           1.0f);
                     glm::vec4 ray_end_world = ndc_to_world * ray_end_ndc;
-                    ray_end_world /= ray_end_world.w;
+                    glm::vec3 ray_end = glm::vec3(ray_end_world) / ray_end_world.w;
 
                     /* NOTE: this normalize is very expensive! */
-                    glm::vec3 ray_dir = glm::normalize(glm::vec3(ray_end_world - cam_pos_4));
+                    glm::vec3 ray_dir = glm::normalize(ray_end - cam_pos);
                     Ray ray = Ray(cam_pos, ray_dir);
 
                     // buffer[x + y * screen_width] = trace(cam_pos_4, ray_dir, box, box_model);

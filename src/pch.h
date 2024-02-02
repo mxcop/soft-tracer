@@ -24,6 +24,7 @@ typedef __m128i i128;
 constexpr f32 BIG_F32 = 1e30f;
 
 #include <vector>
+#include <array>
 #include <memory>
 
 #define GLM_SWIZZLE

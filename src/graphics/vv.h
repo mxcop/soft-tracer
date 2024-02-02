@@ -3,8 +3,7 @@
 #include "aabb.h"
 #include "ray.h"
 
-constexpr float VOXELS_PER_UNIT = 8;
-constexpr int LEVELS_OF_DETAIL = 3;
+constexpr int LEVELS_OF_DETAIL = 4;
 
 struct VoxelVolume {
     /* Center position of the volume */
@@ -48,75 +47,16 @@ struct VoxelVolume {
         return glm::vec3(_max(x.x, y), _max(x.y, y), _max(x.z, y));
     }
 
+    static inline glm::vec3 mulinv(glm::vec3 v) { 
+        glm::vec3 vr = 1.0f / v;
+        if (isinf(vr.x)) vr.x = 0.0f;
+        if (isinf(vr.y)) vr.y = 0.0f;
+        if (isinf(vr.z)) vr.z = 0.0f;
+        return vr;
+    }
+
 #if 1
-    inline f32 intersect(const Ray& ray, const f32 tmin, const f32 tmax) const {
-        float lod = 4, lodinv = 1.0f / 4;
-        int level = 2;
-        glm::ivec3 volume = (aabb_max - aabb_min) * VOXELS_PER_UNIT;
-
-        /* Calculate the ray start, end, and extend */
-        glm::vec3 p0 = ((ray.origin + ray.dir * (tmin + 0.1f)) - aabb_min) * VOXELS_PER_UNIT;
-        glm::vec3 p1 = ((ray.origin + ray.dir * (tmax - 0.1f)) - aabb_min) * VOXELS_PER_UNIT;
-        glm::vec3 extend = p1 - p0;
-        glm::vec3 inv_extend = 1.0f / extend;
-
-        /* Values required for traversal */
-        glm::ivec3 pos =
-            glm::clamp(glm::ivec3(glm::floor(p0 * lodinv) * lod), glm::ivec3(0), volume - 1);
-        glm::vec3 step = glm::sign(extend) * lod;
-        glm::vec3 delta = _vmin(inv_extend * step, 1.0f);
-        glm::vec3 tvox = glm::abs((glm::vec3(pos) + _vmax(step, 0.0f) - p0) * inv_extend);
-
-        constexpr int MAX_STEPS = 128;
-        f32 t = 0.0f;
-        u32 i = 0;
-        for (; i < MAX_STEPS; ++i) {
-            /* Read the current voxel */
-            u8 voxel = fetch_voxel(glm::vec3(pos) * lodinv, glm::vec3(volume) * lodinv, level);
-            bool hit = voxel > 0;
-
-            /* Move to the next voxel */
-            if (tvox.x < tvox.y) {
-                if (tvox.x < tvox.z) {
-                    pos.x += step.x;
-                    if (pos.x < 0 || pos.x >= volume.x) break;
-                    tvox.x += delta.x;
-                    t = tvox.x;
-                } else {
-                    pos.z += step.z;
-                    if (pos.z < 0 || pos.z >= volume.z) break;
-                    tvox.z += delta.z;
-                    t = tvox.z;
-                }
-            } else {
-                if (tvox.y < tvox.z) {
-                    pos.y += step.y;
-                    if (pos.y < 0 || pos.y >= volume.y) break;
-                    tvox.y += delta.y;
-                    t = tvox.y;
-                } else {
-                    pos.z += step.z;
-                    if (pos.z < 0 || pos.z >= volume.z) break;
-                    tvox.z += delta.z;
-                    t = tvox.z;
-                }
-            }
-
-            if (not hit) continue;
-
-            /* Stop if we hit something in L1 */
-            if (level <= 0) break;
-            level--;
-
-            /* Move down one level */
-            lod *= 0.5f, lodinv = 1.0f / lod;
-            step *= 0.5f, delta *= 0.5f;
-            pos = glm::ivec3(glm::floor(p0 * lodinv) * lod);
-            tvox = glm::abs((glm::vec3(pos) + _vmax(step, 0.0f) - p0) * inv_extend);
-        }
-        return ((f32)i / MAX_STEPS) * ray.t;
-        return BIG_F32;
-    };
+    f32 intersect(const Ray& ray, const f32 tmin, const f32 tmax) const;
 #else
     inline f32 intersect(const Ray& ray, const f32 tmin, const f32 dummy) const {
         /* Calculate the size of the voxel volume in voxels */
@@ -144,7 +84,8 @@ struct VoxelVolume {
             /* Check the current voxel */
             u8 voxel = fetch_voxel(vox_pos, extend, 0);
             if (voxel > 0) {
-                return ((float)i / MAX_STEPS) * ray.t;
+                // return ((float)i / MAX_STEPS) * ray.t;
+                return tmin;
             }
         
             /* Amanatides & Woo */
@@ -175,7 +116,8 @@ struct VoxelVolume {
                 }
             }
         }
-        return ((float)i / MAX_STEPS) * ray.t;
+        // return ((float)i / MAX_STEPS) * ray.t;
+        return BIG_F32;
     }
 #endif
 

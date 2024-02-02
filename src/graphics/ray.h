@@ -24,7 +24,7 @@ struct alignas(64) Ray {
         };
         f128 inv_dir_4;
     };
-    f32 t = 32.0f;
+    f32 t = 320.0f;
 
     Ray() = delete;
     Ray(const glm::vec3& origin, const glm::vec3& dir);
@@ -98,10 +98,12 @@ struct alignas(64) Ray {
 
         /* Find the near and far intersection point */
         const f128 vmax4 = _mm_max_ps(t1, t2), vmin4 = _mm_min_ps(t1, t2);
-        const f128 tmax4 = _mm_min_ps(vmax4, _mm_movehl_ps(vmax4, vmax4));
-        const f32 tmax = _min(tmax4.m128_f32[0], vmax4.m128_f32[1]);
-        const f128 tmin4 = _mm_max_ps(vmin4, _mm_movehl_ps(vmin4, vmin4));
-        const f32 tmin = _max(tmin4.m128_f32[0], vmin4.m128_f32[1]);
+        //const f128 tmax4 = _mm_min_ps(vmax4, _mm_movehl_ps(vmax4, vmax4));
+        //const f32 tmax = _min(tmax4.m128_f32[0], vmax4.m128_f32[1]);
+        //const f128 tmin4 = _mm_max_ps(vmin4, _mm_movehl_ps(vmin4, vmin4));
+        //const f32 tmin = _max(tmin4.m128_f32[0], vmin4.m128_f32[1]);
+        const float tmax = _min(vmax4.m128_f32[0], _min(vmax4.m128_f32[1], vmax4.m128_f32[2]));
+        const float tmin = _max(vmin4.m128_f32[0], _max(vmin4.m128_f32[1], vmin4.m128_f32[2]));
 
         const bool hit = (tmax > 0 && tmin < t && tmin < tmax);
         return {hit ? tmin : BIG_F32, tmax};

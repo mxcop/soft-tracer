@@ -56,9 +56,9 @@ Renderer::Renderer(int screen_width, int screen_height)
     std::vector<u8> teapot_vox = load_vox_model("public/models/teapot.vox");
 
     vvv.emplace_back(glm::vec3(0.0f, 0.0f, 0.0f), glm::ivec3(8, 8, 8), glm::vec3(0.0f));
-    vvv.emplace_back(glm::vec3(2.0f, 0.0f, 0.0f), glm::ivec3(16, 16, 16), glm::vec3(0.0f));
-    vvv.emplace_back(glm::vec3(5.0f, 0.0f, 0.0f), glm::ivec3(32, 32, 32), glm::vec3(0.0f));
-    vvv.emplace_back(glm::vec3(/*0.0f*/ 11.0f, 0.0f, 0.0f), glm::ivec3(64, 64, 64),
+    vvv.emplace_back(glm::vec3(10.0f, 0.0f, 0.0f), glm::ivec3(16, 16, 16), glm::vec3(0.0f));
+    vvv.emplace_back(glm::vec3(30.0f, 0.0f, 0.0f), glm::ivec3(32, 32, 32), glm::vec3(0.0f));
+    vvv.emplace_back(glm::vec3(/*0.0f*/ 80.0f, 0.0f, 0.0f), glm::ivec3(64, 64, 64),
                      glm::vec3(0.0f), teapot_vox);
 #endif
 

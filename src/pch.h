@@ -21,6 +21,14 @@ typedef __m256i i256;
 typedef __m128 f128;
 typedef __m128i i128;
 
+union vf128 {
+    struct {
+        f32 x, y, z, w;
+    };
+    f32 cmp[4];
+    f128 vec;
+};
+
 constexpr f32 BIG_F32 = 1e30f;
 
 #include <vector>

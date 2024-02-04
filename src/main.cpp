@@ -83,8 +83,8 @@ int main(int argc, char* argv[]) {
     glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
 
-    glm::vec3 cam_pos = glm::vec3(6.81f, 9.89f, 17.16f);
-    float pitch = -24.0f, yaw = -70.0f;
+    glm::vec3 cam_pos = glm::vec3(32.72f, 94.15f, 110.79f);
+    float pitch = -33.67f, yaw = -59.1f;
     bool w = false, a = false, s = false, d = false, shift = false, space = false;
     bool running = true;
     auto prev_time = std::chrono::high_resolution_clock::now();
@@ -140,12 +140,13 @@ int main(int argc, char* argv[]) {
         cam_dir.z = xzLen * sin(glm::radians(yaw));
         cam_dir = glm::normalize(cam_dir);
 
-        if (w) cam_pos += cam_dir * dt * 12.0f;
-        if (s) cam_pos -= cam_dir * dt * 12.0f;
-        if (d) cam_pos += glm::normalize(glm::cross(cam_dir, glm::vec3(0, 1, 0))) * dt * 12.0f;
-        if (a) cam_pos -= glm::normalize(glm::cross(cam_dir, glm::vec3(0, 1, 0))) * dt * 12.0f;
-        if (shift) cam_pos += glm::vec3(0, -1, 0) * dt * 12.0f;
-        if (space) cam_pos += glm::vec3(0, 1, 0) * dt * 12.0f;
+        constexpr float MOVE_SPEED = 24.0f;
+        if (w) cam_pos += cam_dir * dt * MOVE_SPEED;
+        if (s) cam_pos -= cam_dir * dt * MOVE_SPEED;
+        if (d) cam_pos += glm::normalize(glm::cross(cam_dir, glm::vec3(0, 1, 0))) * dt * MOVE_SPEED;
+        if (a) cam_pos -= glm::normalize(glm::cross(cam_dir, glm::vec3(0, 1, 0))) * dt * MOVE_SPEED;
+        if (shift) cam_pos += glm::vec3(0, -1, 0) * dt * MOVE_SPEED;
+        if (space) cam_pos += glm::vec3(0, 1, 0) * dt * MOVE_SPEED;
 
         glClear(GL_COLOR_BUFFER_BIT);
 

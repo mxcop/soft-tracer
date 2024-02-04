@@ -209,7 +209,7 @@ f32 Bvh::intersect(const Ray& ray) const {
                 glm::vec2 intr = ray.intersection_aabb_sse(prim.aabb_min4, prim.aabb_max4);
 
                 /* Hit occured */
-                if (prim.data[0].size() > 0 && intr.x < BIG_F32) {
+                if (intr.x < BIG_F32 && prim.data[0].size()> 0) {
                     intr.x = prim.intersect(ray, intr.x, intr.y);
                 }
                 mind = std::min(intr.x, mind);

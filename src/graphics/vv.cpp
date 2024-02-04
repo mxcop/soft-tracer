@@ -207,15 +207,80 @@ glm::mat4 VoxelVolume::get_model() const {
     return model;
 }
 
-#define SHOW_STEPS 1
+#define SHOW_STEPS 0
+#define USE_SSE 0
 
+static inline f128 _mm_sign_ps(f128 value) {
+    const f128 zero = _mm_set_ps1(0.0f);
+
+    f128 positives = _mm_and_ps(_mm_cmpgt_ps(value, zero), _mm_set_ps1(1.0f));
+    f128 negatives = _mm_and_ps(_mm_cmplt_ps(value, zero), _mm_set_ps1(-1.0f));
+
+    return _mm_or_ps(positives, negatives);
+}
+
+#if USE_SSE
+f32 VoxelVolume::intersect(const Ray& ray, f32 tmin, f32 tmax) const {
+    glm::ivec3 size = aabb_max - aabb_min;
+    /* Calculate the ray start, end, and extend */
+    tmin += 0.001f, tmax -= 0.001f;
+    f128 p0 = _mm_sub_ps(_mm_add_ps(ray.origin_4, _mm_mul_ps(ray.dir_4, _mm_set_ps1(tmin))),
+                         aabb_min4);
+    f128 p1 = _mm_sub_ps(_mm_add_ps(ray.origin_4, _mm_mul_ps(ray.dir_4, _mm_set_ps1(tmax))),
+                         aabb_min4);
+    const f128 ONE = _mm_set_ps1(1.0f);
+    f128 lod = _mm_set_ps1(1.0f), lodinv = _mm_set_ps1(1.0f / 1.0f);
+
+    f128 rd = _mm_sub_ps(p1, p0);
+    f128 p = _mm_mul_ps(_mm_floor_ps(_mm_mul_ps(p0, lodinv)), lod);
+    f128 ps = p0;
+    f128 rdinv = _mm_div_ps(ONE, rd);
+
+    f128 step = _mm_mul_ps(_mm_sign_ps(rd), lod);
+    f128 delta = _mm_mul_ps(rdinv, step);
+    f128 t_max = _mm_mul_ps(_mm_sub_ps(_mm_add_ps(p, _mm_max_ps(step, ONE)), p0), rdinv);
+
+    float t = -0.0001;
+    for (int i = 0; i < 128; ++i) {
+        float pos[3];
+        _mm_store_ps(pos, p);
+
+        // u8 voxel = fetch_voxel(pos * lodinv, volume * lodinv, level);
+        int idx = (pos[2] * size.x * size.y) + (pos[1] * size.x) + pos[0];
+        u8 voxel = data[0][idx];
+
+        if (voxel > 0) {
+            return 0.0f;
+        }
+
+        // Get "t" at the next intersection point.
+        float dt = _min(_min(t_max.m128_f32[0], t_max.m128_f32[1]), t_max.m128_f32[2]) - t;
+        if ((t += dt) > 1.0) break;
+
+        // This line gets a mask of the smallest component in "t_max"
+        f128 mask = _mm_cmpeq_ps(t_max, _mm_set_ps1(t));
+        t_max = _mm_add_ps(t_max, _mm_and_ps(delta, mask));
+        p = _mm_add_ps(p, _mm_and_ps(step, mask));
+        ps = _mm_add_ps(ps, _mm_mul_ps(_mm_set_ps1(dt), rd));
+
+        // Change LOD based on number of steps (for testing)
+        // if (lod[0] > 1.0 && (i+2) % 4 == 0) {
+        //     lod *= 0.5, lodinv *= 2.0, step *= 0.5, delta *= 0.5;
+        //     p = floor(ps * lodinv) * lod;
+        //     t_max = (p + max(step, .0) - p0) * rdinv;
+        // }
+    }
+    return BIG_F32;
+}
+#else
+/* Algorithm inspired by <http://www.cse.yorku.ca/~amana/research/grid.pdf> */
 f32 VoxelVolume::intersect(const Ray& ray, const f32 tmin, const f32 tmax) const {
     float lod = 8, lodinv = 1.0f / 8;
     int level = 3;
     glm::vec3 volume = aabb_max - aabb_min;
 
     /* Calculate the ray start, end, and extend */
-    glm::vec3 p0 = (ray.origin + ray.dir * (tmin + 0.001f)) - aabb_min;
+    glm::vec3 p0 = (ray.origin + ray.dir * (_max(tmin, 0.0f) + 0.001f)) - aabb_min;
     glm::vec3 p1 = (ray.origin + ray.dir * (tmax - 0.001f)) - aabb_min;
     glm::vec3 extend = p1 - p0;
     glm::vec3 inv_extend = 1.0f / extend;
@@ -223,12 +288,12 @@ f32 VoxelVolume::intersect(const Ray& ray, const f32 tmin, const f32 tmax) const
     /* Values required for traversal */
     glm::vec3 pos = glm::clamp(glm::floor(p0 * lodinv) * lod, glm::vec3(0), volume - 1.0f);
     glm::vec3 step = glm::sign(extend) * lod;
-    glm::vec3 delta = glm::min(inv_extend * step, 1.0f);
-    glm::vec3 tvox = glm::abs((pos + glm::max(step, 0.0f) - p0) * inv_extend);
+    glm::vec3 delta = inv_extend * step;
+    glm::vec3 tvox = (pos + glm::max(step, 0.0f) - p0) * inv_extend;
 
     constexpr int MAX_STEPS = 128;
     f32 t = 0.0f;
-    u32 i = 0;
+    u32 i = 0, j = 0;
     for (; i < MAX_STEPS; ++i) {
         /* Read the current voxel */
         u8 voxel = fetch_voxel(pos * lodinv, volume * lodinv, level);
@@ -236,43 +301,54 @@ f32 VoxelVolume::intersect(const Ray& ray, const f32 tmin, const f32 tmax) const
         if (voxel > 0) {
             /* Stop if we hit something in L1 */
             if (level <= 0) {
-                return (voxel / 256.0f) * ray.t;
+                // return (voxel / 256.0f) * ray.t;
 #if SHOW_STEPS
                 break;
 #endif
                 return tmin + (tmax - tmin) * t;
             }
             level--;
+            j = 0;
 
             /* Move down one level */
             lod *= 0.5f, lodinv *= 2.0f, step *= 0.5f, delta *= 0.5f;
             pos = glm::floor((p0 + (t + 0.00001f) * extend) * lodinv) * lod;
-            tvox = glm::abs((pos + glm::max(step, 0.0f) - p0) * inv_extend);
+            tvox = (pos + glm::max(step, 0.0f) - p0) * inv_extend;
             continue;
         }
+        //} else if (level < 3 && ++j > 12) {
+        //    j = 0;
+
+        //    glm::vec3 big_pos = glm::floor((p0 + (t + 0.00001f) * extend) * (lodinv * 0.5f)) * (lod * 2.0f);
+        //    u8 big_voxel = fetch_voxel(big_pos * (lodinv * 0.5f), volume * (lodinv * 0.5f), level);
+        //    if (big_voxel == 0) {
+        //        /* Move up one level */
+        //        level++;
+        //        lod *= 2.0f, lodinv *= 0.5f, step *= 2.0f, delta *= 2.0f;
+        //        pos = glm::floor((p0 + (t + 0.00001f) * extend) * lodinv) * lod;
+        //        tvox = (pos + glm::max(step, 0.0f) - p0) * inv_extend;
+        //        continue;
+        //    }
+        //}
 
         /* Move to the next voxel */
         if (tvox.x < tvox.y) {
             if (tvox.x < tvox.z) {
                 pos.x += step.x;
-                //if (pos.x < 0 || pos.x >= volume.x) break;
                 t = tvox.x;
                 tvox.x += delta.x;
             } else {
                 pos.z += step.z;
-                //if (pos.z < 0 || pos.z >= volume.z) break;
                 t = tvox.z;
                 tvox.z += delta.z;
             }
         } else {
             if (tvox.y < tvox.z) {
                 pos.y += step.y;
-                //if (pos.y < 0 || pos.y >= volume.y) break;
                 t = tvox.y;
                 tvox.y += delta.y;
             } else {
                 pos.z += step.z;
-                //if (pos.z < 0 || pos.z >= volume.z) break;
                 t = tvox.z;
                 tvox.z += delta.z;
             }
@@ -280,10 +356,12 @@ f32 VoxelVolume::intersect(const Ray& ray, const f32 tmin, const f32 tmax) const
         if (t > 1.0f) break;
     }
 #if SHOW_STEPS
+    return (level / 3.0f) * ray.t;
     return ((f32)i / MAX_STEPS) * ray.t;
 #endif
     return BIG_F32;
 }
+#endif
 
 // void traverse(vec2 p0, vec2 p1) {
 //     float lod = 4.0, lodinv = 1.0 / 4.0;

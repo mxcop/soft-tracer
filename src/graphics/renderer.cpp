@@ -32,15 +32,17 @@ Renderer::Renderer(int screen_width, int screen_height)
     //         }
     //     }
     // }
-    std::random_device seed;
-    std::mt19937 gen(seed());
-    std::uniform_real_distribution<float> rand_s(32, 64);
+    //std::random_device seed;
+    //std::mt19937 gen(seed());
+    //std::uniform_real_distribution<float> rand_s(32, 64);
 
-    for (int y = -8; y < 8; y++) {
-        for (int x = -8; x < 8; x++) {
-            vvv.emplace_back(glm::vec3(x * (128 / 8.0f), 0.0f, y * (128 / 8.0f)),
-                             glm::ivec3(128, rand_s(gen), 128),
-                             glm::vec3(0.0f));
+    std::vector<u8> teapot_vox = load_vox_model("public/models/teapot.vox");
+    for (int z = 0; z < 4; z++) {
+        for (int y = 0; y < 4; y++) {
+            for (int x = 0; x < 4; x++) {
+                vvv.emplace_back(glm::vec3(x * 64.0f, y * 64.0f, z * 64.0f), glm::ivec3(64, 64, 64),
+                                 glm::vec3(0.0f), teapot_vox);
+            }
         }
     }
 #else
@@ -76,7 +78,6 @@ static uint32_t lerp_color(uint32_t color1, uint32_t color2, float t) {
     constexpr uint32_t RBmask = 0xff00ff00;
     constexpr uint32_t GAmask = 0x00ff00ff;
     constexpr uint32_t one_q8 = 1u << 8;  // a fixed point rep of 1.0 with 8 fractional bits
-    assert(t >= 0.0f && t <= 1.0f);
     uint32_t t_q8 = t * one_q8;
     uint32_t rb1 = (color1 & RBmask) >> 8;
     uint32_t rb2 = (color2 & RBmask) >> 8;
@@ -90,10 +91,8 @@ static uint32_t lerp_color(uint32_t color1, uint32_t color2, float t) {
 
 static GLuint trace(const Ray& ray, const Bvh* bvh) {
     f32 dist = bvh->intersect(ray);
-    if (dist < BIG_F32) {
-        return lerp_color(0xFFFFFFFF, 0x000000FF, dist / (ray.t + 10.0f));
-    }
-    return 0x101010FF;
+    if (dist > ray.t) return 0x101010FF;
+    return lerp_color(0xFFFFFFFF, 0x000000FF, dist / (ray.t + 10.0f));
 }
 
 void Renderer::render(float dt, float time, glm::vec3 cam_pos, glm::vec3 cam_dir) {
@@ -113,7 +112,7 @@ void Renderer::render(float dt, float time, glm::vec3 cam_pos, glm::vec3 cam_dir
     // box.corners[1] = glm::vec3(2.5f);
 
 #if 1
-    constexpr i32 TILE_SIZE = 4;
+    constexpr i32 TILE_SIZE = 8;
 
     for (int y = 0; y < screen_height; y += TILE_SIZE) {
         for (int x = 0; x < screen_width; x += TILE_SIZE) {
@@ -128,8 +127,11 @@ void Renderer::render(float dt, float time, glm::vec3 cam_pos, glm::vec3 cam_dir
                     glm::vec3 ray_end = glm::vec3(ray_end_world) / ray_end_world.w;
 
                     /* NOTE: this normalize is very expensive! */
-                    glm::vec3 ray_dir = glm::normalize(ray_end - cam_pos);
-                    Ray ray = Ray(cam_pos, ray_dir);
+                    glm::vec3 ray_dir = ray_end - cam_pos;
+                    if (ray_dir.x == 0) ray_dir.x = 0.000001f;
+                    if (ray_dir.y == 0) ray_dir.y = 0.000001f;
+                    if (ray_dir.z == 0) ray_dir.z = 0.000001f;
+                    Ray ray = Ray(cam_pos, glm::normalize(ray_dir));
 
                     // buffer[x + y * screen_width] = trace(cam_pos_4, ray_dir, box, box_model);
                     buffer[ix + iy * screen_width] = trace(ray, &bvh);
@@ -143,14 +145,14 @@ void Renderer::render(float dt, float time, glm::vec3 cam_pos, glm::vec3 cam_dir
             glm::vec4 ray_end_ndc(((float)x / (float)screen_width - 0.5f) * 2.0f,
                                   ((float)y / (float)screen_height - 0.5f) * 2.0f, 0.0, 1.0f);
             glm::vec4 ray_end_world = ndc_to_world * ray_end_ndc;
-            ray_end_world /= ray_end_world.w;
+            glm::vec3 ray_end = glm::vec3(ray_end_world) / ray_end_world.w;
 
             /* NOTE: this normalize is very expensive! */
-            glm::vec3 ray_dir = glm::normalize(ray_end_world - cam_pos_4);
-            Ray ray = Ray(cam_pos, ray_dir);
+            glm::vec3 ray_dir = ray_end - cam_pos;
+            Ray ray = Ray(cam_pos, glm::normalize(ray_dir));
 
             // buffer[x + y * screen_width] = trace(cam_pos_4, ray_dir, box, box_model);
-            buffer[x + y * screen_width] = trace(ray, bvh);
+            buffer[x + y * screen_width] = trace(ray, &bvh);
         }
     }
 #endif

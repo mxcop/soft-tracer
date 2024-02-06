@@ -83,8 +83,8 @@ int main(int argc, char* argv[]) {
     glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
 
-    glm::vec3 cam_pos = glm::vec3(20);
-    float pitch = 0.0f, yaw = 0.0f;
+    glm::vec3 cam_pos = glm::vec3(32.72f, 94.15f, 110.79f);
+    float pitch = -33.67f, yaw = -59.1f;
     bool w = false, a = false, s = false, d = false, shift = false, space = false;
     bool running = true;
     auto prev_time = std::chrono::high_resolution_clock::now();
@@ -140,12 +140,13 @@ int main(int argc, char* argv[]) {
         cam_dir.z = xzLen * sin(glm::radians(yaw));
         cam_dir = glm::normalize(cam_dir);
 
-        if (w) cam_pos += cam_dir * dt * 12.0f;
-        if (s) cam_pos -= cam_dir * dt * 12.0f;
-        if (d) cam_pos += glm::normalize(glm::cross(cam_dir, glm::vec3(0, 1, 0))) * dt * 12.0f;
-        if (a) cam_pos -= glm::normalize(glm::cross(cam_dir, glm::vec3(0, 1, 0))) * dt * 12.0f;
-        if (shift) cam_pos += glm::vec3(0, -1, 0) * dt * 12.0f;
-        if (space) cam_pos += glm::vec3(0, 1, 0) * dt * 12.0f;
+        constexpr float MOVE_SPEED = 24.0f;
+        if (w) cam_pos += cam_dir * dt * MOVE_SPEED;
+        if (s) cam_pos -= cam_dir * dt * MOVE_SPEED;
+        if (d) cam_pos += glm::normalize(glm::cross(cam_dir, glm::vec3(0, 1, 0))) * dt * MOVE_SPEED;
+        if (a) cam_pos -= glm::normalize(glm::cross(cam_dir, glm::vec3(0, 1, 0))) * dt * MOVE_SPEED;
+        if (shift) cam_pos += glm::vec3(0, -1, 0) * dt * MOVE_SPEED;
+        if (space) cam_pos += glm::vec3(0, 1, 0) * dt * MOVE_SPEED;
 
         glClear(GL_COLOR_BUFFER_BIT);
 
@@ -161,14 +162,38 @@ int main(int argc, char* argv[]) {
         double render_time_ms = render_time_us / 1000.0;
         double render_time_s = render_time_ms / 1000.0;
 
-        ImGui::Text("fps: %.2f, rays/s: %.2fM", 1.0f / dt,
-                    ((WINDOW_WIDTH * WINDOW_HEIGHT) / render_time_s) / 1'000'000.0);
-        ImGui::Text("build time: %.2fms", renderer->db_build_time * 0.001f);
-        ImGui::Text("render time: %.2fms", render_time_ms);
-        ImGui::Text("avg ray time: %.2fns",
-                    (render_time_us / (WINDOW_WIDTH * WINDOW_HEIGHT)) * 1'000.0);
-        ImGui::Text("avg ray time goal: %.1fns",
-                    (0.0166666 / (double)(WINDOW_WIDTH * WINDOW_HEIGHT)) * 1.0e+9);
+        /* Window position */
+        constexpr float PADDING = 10.0f;
+        ImVec2 work_pos = ImGui::GetMainViewport()->WorkPos;
+        ImGui::SetNextWindowPos(ImVec2(work_pos.x + PADDING, work_pos.y + PADDING),
+                                ImGuiCond_Always,
+                         ImVec2(0.0f, 0.0f));
+
+        constexpr ImGuiWindowFlags overlay_flags =
+            ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize |
+            ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing |
+            ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoMove;
+
+        /* Draw content */
+        ImGui::SetNextWindowBgAlpha(0.35f);
+        if (ImGui::Begin("Debug overlay", nullptr, overlay_flags)) {
+            ImGui::Text("Debug overlay\n");
+            ImGui::Separator();
+            ImGui::Text("FPS: %.1f", 1.0f / dt);
+            ImGui::Separator();
+            ImGui::Text("Ray/s: %.2fM", ((WINDOW_WIDTH * WINDOW_HEIGHT) / render_time_s) / 1'000'000.0);
+            ImGui::Text("Ray time (mean): %.2fns",
+                        (render_time_us / (WINDOW_WIDTH * WINDOW_HEIGHT)) * 1'000.0);
+            ImGui::Text("Ray time (goal): %.2fns",
+                        (0.0166666 / (double)(WINDOW_WIDTH * WINDOW_HEIGHT)) * 1.0e+9);
+            ImGui::Separator();
+            ImGui::Text("BVH build: %.2fms", renderer->db_build_time * 0.001f);
+            ImGui::Text("Frame time: %.2fms", render_time_ms);
+            ImGui::Separator();
+            ImGui::Text("cam pos: %.2f, %.2f, %.2f", cam_pos.x, cam_pos.y, cam_pos.z);
+            ImGui::Text("cam angle: %.2f, %.2f", pitch, yaw);
+        }
+        ImGui::End();
 
         /* Draw the screen buffer */
         GLuint screen_buf = renderer->get_buf();

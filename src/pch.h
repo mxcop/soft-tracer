@@ -24,6 +24,21 @@ typedef __m128i i128;
 constexpr f32 BIG_F32 = 1e30f;
 
 #include <vector>
+#include <array>
+#include <memory>
 
+#define GLM_SWIZZLE
 #include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>
+
+union vf128 {
+    struct {
+        f32 x, y, z, w;
+    };
+    f32 cmp[4];
+    f128 mm;
+    struct {
+        glm::vec3 v3;
+        f32 _;
+    };
+};

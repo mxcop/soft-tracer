@@ -206,14 +206,13 @@ f32 Bvh::intersect(const Ray& ray) const {
             /* Check if we hit any primitives */
             for (u32 i = 0; i < node->prim_count; ++i) {
                 const VoxelVolume& prim = prims[node->left_first + i];
-                const f32 dist = ray.intersects_aabb_sse(prim.aabb_min4, prim.aabb_max4);
+                glm::vec2 intr = ray.intersection_aabb_sse(prim.aabb_min4, prim.aabb_max4);
 
                 /* Hit occured */
-                //if (dist < BIG_F32) {
-                //    
-                //}
-
-                mind = std::min(dist, mind);
+                if (intr.x < BIG_F32 && prim.data[0].size()> 0) {
+                    intr.x = prim.intersect(ray, intr.x, intr.y);
+                }
+                mind = std::min(intr.x, mind);
             }
             // if (mind < BIG_F32) return mind;
 
@@ -227,15 +226,15 @@ f32 Bvh::intersect(const Ray& ray) const {
         const Node* child1 = &nodes[node->left_first];
         const Node* child2 = &nodes[node->left_first + 1];
 
-        /* This function SHOULD BE inlined, otherwise it causes cache misses for the "node_stack" */
-        #if 1
+/* This function SHOULD BE inlined, otherwise it causes cache misses for the "node_stack" */
+#if 1
         f32 dist1 = ray.intersects_aabb_sse(child1->aabb_min4, child1->aabb_max4);
         f32 dist2 = ray.intersects_aabb_sse(child2->aabb_min4, child2->aabb_max4);
-        #else
+#else
         const glm::vec2 dists = ray.intersects_aabb2_avx(child1->aabb_min4, child1->aabb_max4,
                                                          child2->aabb_min4, child2->aabb_max4);
         f32 dist1 = dists.x, dist2 = dists.y;
-        #endif
+#endif
 
         /* Child to be traversed first should be the closest one */
         if (dist1 > dist2) {

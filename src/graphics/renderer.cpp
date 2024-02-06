@@ -23,7 +23,7 @@ Renderer::Renderer(int screen_width, int screen_height)
 
     std::vector<VoxelVolume> vvv;
 
-#if 0
+#if 1
     // for (int y = 0; y < 2; y++) {
     //     for (int x = 0; x < 2; x++) {
     //         for (int z = 0; z < 2; z++) {
@@ -37,11 +37,11 @@ Renderer::Renderer(int screen_width, int screen_height)
     //std::uniform_real_distribution<float> rand_s(32, 64);
 
     std::vector<u8> teapot_vox = load_vox_model("public/models/teapot.vox");
-    for (int z = 0; z < 4; z++) {
-        for (int y = 0; y < 4; y++) {
-            for (int x = 0; x < 4; x++) {
-                vvv.emplace_back(glm::vec3(x * 64.0f, y * 64.0f, z * 64.0f), glm::ivec3(64, 64, 64),
-                                 glm::vec3(0.0f), teapot_vox);
+    for (int z = 0; z < 16; z++) {
+        for (int y = 0; y < 16; y++) {
+            for (int x = 0; x < 16; x++) {
+                vvv.emplace_back(glm::vec3(x * 68.0f, y * 68.0f, z * 68.0f), glm::ivec3(32, 32, 32),
+                                 glm::vec3(0.0f)/*, teapot_vox*/);
             }
         }
     }

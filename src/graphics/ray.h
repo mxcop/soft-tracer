@@ -24,7 +24,7 @@ struct alignas(64) Ray {
         };
         f128 inv_dir_4;
     };
-    f32 t = 320.0f;
+    f32 t = 1024.0f; // 320
 
     Ray() = delete;
     Ray(const glm::vec3& origin, const glm::vec3& dir);

@@ -105,8 +105,11 @@ f32 Bvh::find_best_split_plane(const Node& node, i32& axis, f32& pos) const {
         scale = (bmax - bmin) / BINS;
         for (i32 i = 0; i < BINS - 1; ++i) {
             f32 plane_cost = l_counts[i] * l_areas[i] + r_counts[i] * r_areas[i];
-            if (plane_cost < best_cost)
-                axis = a, pos = bmin + scale * (i + 1), best_cost = plane_cost;
+            if (plane_cost < best_cost) {
+                axis = a;
+                pos = bmin + scale * (i + 1);
+                best_cost = plane_cost;
+            }
         }
     }
 #else
@@ -145,8 +148,9 @@ void Bvh::subdivide(Bvh::Node& node, int lvl) {
 
     /* Calculate parent node cost */
     glm::vec3 e = node.aabb_max - node.aabb_min;
-    f32 parent_area = e.x * e.y + e.y * e.z + e.z * e.x;
+    f32 parent_area = e.x * e.x + e.y * e.y + e.z * e.z;
     f32 parent_cost = node.prim_count * parent_area;
+    // TODO: for some reason this actually makes the BVH WORSE!
     if (split_cost >= parent_cost) return; /* Split would not be worth it */
 
     /* Determine which primitives lie on which side */
@@ -200,6 +204,7 @@ void Bvh::build(const std::vector<VoxelVolume>& new_prims) {
 f32 Bvh::intersect(const Ray& ray) const {
     const Node *node = &nodes[root_idx], *node_stack[64];
     f32 mind = BIG_F32;
+    u32 steps = 0u;
     for (u32 stack_ptr = 0;;) {
         /* If the current node is a leaf... */
         if (node->is_leaf()) {
@@ -207,6 +212,7 @@ f32 Bvh::intersect(const Ray& ray) const {
             for (u32 i = 0; i < node->prim_count; ++i) {
                 const VoxelVolume& prim = prims[node->left_first + i];
                 glm::vec2 intr = ray.intersection_aabb_sse(prim.aabb_min4, prim.aabb_max4);
+                steps++;
 
                 /* Hit occured */
                 if (intr.x < BIG_F32 && prim.data[0].size()> 0) {
@@ -230,6 +236,7 @@ f32 Bvh::intersect(const Ray& ray) const {
 #if 1
         f32 dist1 = ray.intersects_aabb_sse(child1->aabb_min4, child1->aabb_max4);
         f32 dist2 = ray.intersects_aabb_sse(child2->aabb_min4, child2->aabb_max4);
+        steps++;
 #else
         const glm::vec2 dists = ray.intersects_aabb2_avx(child1->aabb_min4, child1->aabb_max4,
                                                          child2->aabb_min4, child2->aabb_max4);
@@ -255,5 +262,7 @@ f32 Bvh::intersect(const Ray& ray) const {
         }
     }
 
-    return (mind < BIG_F32) ? mind : BIG_F32;
+    if (mind < BIG_F32) return mind;
+    return ((f32)steps / 32.0f) * ray.t;
+    // return (mind < BIG_F32) ? mind : BIG_F32;
 }

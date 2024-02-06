@@ -16,5 +16,5 @@ glm::vec3 AABB::center() const { return min + (max - min) * 0.5f; }
 
 float AABB::area() const {
     glm::vec3 e = max - min;
-    return e.x * e.y + e.y * e.z + e.z * e.x;
+    return e.x * e.x + e.y * e.y + e.z * e.z;
 }

@@ -150,7 +150,6 @@ void Bvh::subdivide(Bvh::Node& node, int lvl) {
     glm::vec3 e = node.aabb_max - node.aabb_min;
     f32 parent_area = e.x * e.x + e.y * e.y + e.z * e.z;
     f32 parent_cost = node.prim_count * parent_area;
-    // TODO: for some reason this actually makes the BVH WORSE!
     if (split_cost >= parent_cost) return; /* Split would not be worth it */
 
     /* Determine which primitives lie on which side */
@@ -263,6 +262,6 @@ f32 Bvh::intersect(const Ray& ray) const {
     }
 
     if (mind < BIG_F32) return mind;
-    return ((f32)steps / 32.0f) * ray.t;
+    return ((f32)steps / 64.0f) * ray.t;
     // return (mind < BIG_F32) ? mind : BIG_F32;
 }

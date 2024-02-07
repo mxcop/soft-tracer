@@ -83,8 +83,8 @@ int main(int argc, char* argv[]) {
     glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
 
-    glm::vec3 cam_pos = glm::vec3(32.72f, 94.15f, 110.79f);
-    float pitch = -33.67f, yaw = -59.1f;
+    glm::vec3 cam_pos = glm::vec3(-110.0f, 327.0f, -144.0f); // glm::vec3(32.72f, 94.15f, 110.79f);
+    float pitch = -35.0f, yaw = 41.6f; // float pitch = -33.67f, yaw = -59.1f;
     bool w = false, a = false, s = false, d = false, shift = false, space = false;
     bool running = true;
     auto prev_time = std::chrono::high_resolution_clock::now();

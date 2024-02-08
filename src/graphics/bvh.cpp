@@ -200,6 +200,10 @@ void Bvh::build(const std::vector<VoxelVolume>& new_prims) {
     subdivide(root, 0);
 }
 
+//f128 Bvh::traverse_packet() const {
+//
+//}
+
 f32 Bvh::intersect(const Ray& ray) const {
     const Node *node = &nodes[root_idx], *node_stack[64];
     f32 mind = BIG_F32;

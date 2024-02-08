@@ -8,8 +8,10 @@ void AABB::grow(glm::vec3 p) {
 }
 
 void AABB::grow(const AABB& aabb) {
-    this->grow(aabb.min);
-    this->grow(aabb.max);
+    if (aabb.min.x != BIG_F32) {
+        this->grow(aabb.min);
+        this->grow(aabb.max);
+    }
 }
 
 glm::vec3 AABB::center() const { return min + (max - min) * 0.5f; }

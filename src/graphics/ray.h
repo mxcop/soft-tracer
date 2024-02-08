@@ -24,7 +24,7 @@ struct alignas(64) Ray {
         };
         f128 inv_dir_4;
     };
-    f32 t = 320.0f;
+    f32 t = 1024.0f; // 320
 
     Ray() = delete;
     Ray(const glm::vec3& origin, const glm::vec3& dir);
@@ -48,22 +48,17 @@ struct alignas(64) Ray {
     float intersects_aabb_sse(const f128 bmin4, const f128 bmax4) const {
         /* Idea to use fmsub to save 1 instruction came from
          * <http://www.joshbarczak.com/blog/?p=787> */
-        const f128 rd = _mm_mul_ps(origin_4, inv_dir_4);
-        const f128 t1 = _mm_fmsub_ps(bmin4, inv_dir_4, rd);
-        const f128 t2 = _mm_fmsub_ps(bmax4, inv_dir_4, rd);
+        const __m128 rd = _mm_mul_ps(origin_4, inv_dir_4);
+        const __m128 t1 = _mm_fmsub_ps(bmin4, inv_dir_4, rd);
+        const __m128 t2 = _mm_fmsub_ps(bmax4, inv_dir_4, rd);
 
         /* Find the near and far intersection point */
-        const f128 vmax4 = _mm_max_ps(t1, t2), vmin4 = _mm_min_ps(t1, t2);
-        const f128 tmax4 = _mm_min_ps(vmax4, _mm_movehl_ps(vmax4, vmax4));
-        const f32 tmax = _min(tmax4.m128_f32[0], vmax4.m128_f32[1]);
-        const f128 tmin4 = _mm_max_ps(vmin4, _mm_movehl_ps(vmin4, vmin4));
-        const f32 tmin = _max(tmin4.m128_f32[0], vmin4.m128_f32[1]);
+        const __m128 vmax4 = _mm_max_ps(t1, t2), vmin4 = _mm_min_ps(t1, t2);
+        const float tmax = _min(_min(vmax4.m128_f32[0], vmax4.m128_f32[1]), vmax4.m128_f32[2]);
+        /* The last max(0) here handles being inside of the AABB */
+        const float tmin = _max(_max(_max(vmin4.m128_f32[0], vmin4.m128_f32[1]), vmin4.m128_f32[2]), 0);
 
-        /* Handle being inside the AABB */
-        if (tmax <= 0) return BIG_F32;
-        if (tmin <= 0) return 0;
-
-        const bool hit = (tmin < t && tmin <= tmax);
+        const bool hit = tmin <= tmax;
         return hit ? tmin : BIG_F32;
     }
 #else

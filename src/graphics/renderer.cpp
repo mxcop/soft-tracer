@@ -23,7 +23,7 @@ Renderer::Renderer(int screen_width, int screen_height)
 
     std::vector<VoxelVolume> vvv;
 
-#if 0
+#if 1
     // for (int y = 0; y < 2; y++) {
     //     for (int x = 0; x < 2; x++) {
     //         for (int z = 0; z < 2; z++) {
@@ -40,8 +40,8 @@ Renderer::Renderer(int screen_width, int screen_height)
     for (int z = 0; z < 4; z++) {
         for (int y = 0; y < 4; y++) {
             for (int x = 0; x < 4; x++) {
-                vvv.emplace_back(glm::vec3(x * 64.0f, y * 64.0f, z * 64.0f), glm::ivec3(64, 64, 64),
-                                 glm::vec3(0.0f), teapot_vox);
+                vvv.emplace_back(glm::vec3(x * 68.0f, y * 68.0f, z * 68.0f), glm::ivec3(32, 32, 32),
+                                 glm::vec3(0.0f)/*, teapot_vox*/);
             }
         }
     }
@@ -61,7 +61,7 @@ Renderer::Renderer(int screen_width, int screen_height)
     vvv.emplace_back(glm::vec3(10.0f, 0.0f, 0.0f), glm::ivec3(16, 16, 16), glm::vec3(0.0f));
     vvv.emplace_back(glm::vec3(30.0f, 0.0f, 0.0f), glm::ivec3(32, 32, 32), glm::vec3(0.0f));
     vvv.emplace_back(glm::vec3(/*0.0f*/ 80.0f, 0.0f, 0.0f), glm::ivec3(64, 64, 64),
-                     glm::vec3(0.0f), teapot_vox);
+                     glm::vec3(0.0f)/*, teapot_vox*/);
 #endif
 
     auto start_time = std::chrono::steady_clock::now();

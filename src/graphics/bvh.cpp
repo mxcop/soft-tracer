@@ -219,7 +219,6 @@ f32 Bvh::intersect(const Ray& ray) const {
                 }
                 mind = std::min(intr.x, mind);
             }
-            // if (mind < BIG_F32) return mind;
 
             /* Decend down the stack */
             if (stack_ptr == 0) break;
@@ -231,16 +230,10 @@ f32 Bvh::intersect(const Ray& ray) const {
         const Node* child1 = &nodes[node->left_first];
         const Node* child2 = &nodes[node->left_first + 1];
 
-/* This function SHOULD BE inlined, otherwise it causes cache misses for the "node_stack" */
-#if 1
+        /* This function SHOULD BE inlined, otherwise it causes cache misses for the "node_stack" */
         f32 dist1 = ray.intersects_aabb_sse(child1->aabb_min4, child1->aabb_max4);
         f32 dist2 = ray.intersects_aabb_sse(child2->aabb_min4, child2->aabb_max4);
         steps++;
-#else
-        const glm::vec2 dists = ray.intersects_aabb2_avx(child1->aabb_min4, child1->aabb_max4,
-                                                         child2->aabb_min4, child2->aabb_max4);
-        f32 dist1 = dists.x, dist2 = dists.y;
-#endif
 
         /* Child to be traversed first should be the closest one */
         if (dist1 > dist2) {

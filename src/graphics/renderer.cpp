@@ -98,7 +98,7 @@ static GLuint trace(const Ray& ray, const Bvh* bvh) {
 
 void Renderer::render(float dt, float time, glm::vec3 cam_pos, glm::vec3 cam_dir) {
     glm::mat4 proj =
-        glm::perspective(70.0f, static_cast<float>(screen_width) / screen_height, 0.01f, 100.0f);
+        glm::perspective(70.0f, static_cast<float>(screen_width) / screen_height, 0.01f, 10000.0f);
     glm::mat4 view = glm::lookAt(cam_pos, cam_pos + cam_dir, glm::vec3(0, 1, 0));
 
     glm::mat4 ndc_to_world = glm::inverse(proj * view);
@@ -186,8 +186,16 @@ void Renderer::render(float dt, float time, glm::vec3 cam_pos, glm::vec3 cam_dir
                 ray_bl = glm::normalize(ray_end - cam_pos);
             }
 
-            InfFrustum packet_frustum = InfFrustum(cam_pos, ray_tl, ray_tr, ray_br, ray_bl);
-            InfFrustum test = InfFrustum(proj * view);
+            float f_angle = acosf(glm::dot(ray_tl, ray_bl));
+
+            glm::mat4 f_proj = glm::perspective(f_angle, 1.0f, 0.01f, 10000.0f);
+            glm::mat4 f_view = glm::lookAt(cam_pos, cam_pos + ray_dir, glm::vec3(0, 1, 0));
+
+            // InfFrustum frustum = InfFrustum(cam_pos, ray_dir, ray_tl, ray_tr, ray_bl, ray_br);
+            // InfFrustum test = InfFrustum(proj * view);
+            InfFrustum frustum = InfFrustum(f_proj * f_view);
+            // frustum.init(cam_pos, ray_dir, ray_tl, ray_tr, ray_br, ray_bl);
+            //frustum.init(proj * view);
 
             if (Ray(cam_pos, ray_dir).intersects_aabb(glm::vec3(0), glm::vec3(64)) != BIG_F32) {
                 for (int v = 0; v < TILE_SIZE; v++) {
@@ -197,7 +205,7 @@ void Renderer::render(float dt, float time, glm::vec3 cam_pos, glm::vec3 cam_dir
                 }
             }
 
-            if (test.intersect_aabb(glm::vec3(0), glm::vec3(64))) {
+            if (frustum.intersect_sphere(glm::vec3(0), 32)) {
                 for (int v = 0; v < TILE_SIZE; v++) {
                     for (int u = 0; u < TILE_SIZE; u++) {
                         buffer[(x + u) + (y + v) * screen_width] &= 0xFF0000FF;

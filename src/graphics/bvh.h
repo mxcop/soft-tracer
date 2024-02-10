@@ -2,6 +2,7 @@
 
 #include "aabb.h"
 #include "ray.h"
+#include "packet.h"
 #include "vv.h"
 
 /*
@@ -61,4 +62,5 @@ class Bvh {
     f32 find_best_split_plane(const Node& node, i32& axis, f32& pos) const;
 
     f32 intersect(const Ray& ray) const;
+    f128 intersect(const RayPacket& packet) const;
 };

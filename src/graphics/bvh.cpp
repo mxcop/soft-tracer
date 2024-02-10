@@ -258,7 +258,21 @@ f32 Bvh::intersect(const Ray& ray) const {
         }
     }
 
-    if (mind < BIG_F32) return mind;
-    return ((f32)steps / 64.0f) * ray.t;
-    // return (mind < BIG_F32) ? mind : BIG_F32;
+    // if (mind < BIG_F32) return mind;
+    // return ((f32)steps / 64.0f) * ray.t;
+    return (mind < BIG_F32) ? mind : BIG_F32;
+}
+
+f128 Bvh::intersect(const RayPacket& packet) const {
+    const Node *node = &nodes[root_idx], *node_stack[64];
+    f32 mind = BIG_F32;
+    for (u32 stack_ptr = 0;;) {
+        if (node->is_leaf()) {
+            // Test primitives...
+        }
+
+        /* In case we're not a leaf, see if we intersect the child nodes */
+        const Node* child1 = &nodes[node->left_first];
+        const Node* child2 = &nodes[node->left_first + 1];
+    }
 }

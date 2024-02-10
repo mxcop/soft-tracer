@@ -130,8 +130,8 @@ int main(int argc, char* argv[]) {
             }
         }
 
-        pitch = max(min(pitch - mdy * dt * 4.0f, 89.0f), -89.0f);
-        yaw += mdx * dt * 4.0f;
+        pitch = max(min(pitch - mdy * 0.1f, 89.0f), -89.0f);
+        yaw += mdx * 0.1f;
 
         glm::vec3 cam_dir = glm::vec3(0);
         float xzLen = cos(glm::radians(pitch));

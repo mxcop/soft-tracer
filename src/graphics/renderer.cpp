@@ -33,16 +33,16 @@ Renderer::Renderer(int screen_width, int screen_height)
     //         }
     //     }
     // }
-    //std::random_device seed;
-    //std::mt19937 gen(seed());
-    //std::uniform_real_distribution<float> rand_s(32, 64);
+    // std::random_device seed;
+    // std::mt19937 gen(seed());
+    // std::uniform_real_distribution<float> rand_s(32, 64);
 
     std::vector<u8> teapot_vox = load_vox_model("public/models/teapot.vox");
     for (int z = 0; z < 2; z++) {
         for (int y = 0; y < 2; y++) {
             for (int x = 0; x < 2; x++) {
                 vvv.emplace_back(glm::vec3(x * 64.0f, y * 64.0f, z * 64.0f), glm::ivec3(32, 32, 32),
-                                 glm::vec3(0.0f)/*, teapot_vox*/);
+                                 glm::vec3(0.0f) /*, teapot_vox*/);
             }
         }
     }
@@ -62,7 +62,7 @@ Renderer::Renderer(int screen_width, int screen_height)
     vvv.emplace_back(glm::vec3(10.0f, 0.0f, 0.0f), glm::ivec3(16, 16, 16), glm::vec3(0.0f));
     vvv.emplace_back(glm::vec3(30.0f, 0.0f, 0.0f), glm::ivec3(32, 32, 32), glm::vec3(0.0f));
     vvv.emplace_back(glm::vec3(/*0.0f*/ 80.0f, 0.0f, 0.0f), glm::ivec3(64, 64, 64),
-                     glm::vec3(0.0f)/*, teapot_vox*/);
+                     glm::vec3(0.0f) /*, teapot_vox*/);
 #endif
 
     auto start_time = std::chrono::steady_clock::now();
@@ -113,33 +113,33 @@ void Renderer::render(float dt, float time, glm::vec3 cam_pos, glm::vec3 cam_dir
     // box.corners[1] = glm::vec3(2.5f);
 
 #if 1
-    constexpr i32 TILE_SIZE = 16;
+    constexpr i32 TILE_SIZE = 24;
 
-    for (int y = 0; y < screen_height; y += TILE_SIZE) {
-        for (int x = 0; x < screen_width; x += TILE_SIZE) {
-            for (int v = 0; v < TILE_SIZE; v++) {
-                for (int u = 0; u < TILE_SIZE; u++) {
-                    int ix = x + u;
-                    int iy = y + v;
-                    glm::vec4 ray_end_ndc(((float)ix / (float)screen_width - 0.5f) * 2.0f,
-                                          ((float)iy / (float)screen_height - 0.5f) * 2.0f, 0.0,
-                                          1.0f);
-                    glm::vec4 ray_end_world = ndc_to_world * ray_end_ndc;
-                    glm::vec3 ray_end = glm::vec3(ray_end_world) / ray_end_world.w;
+    //for (int y = 0; y < screen_height; y += TILE_SIZE) {
+    //    for (int x = 0; x < screen_width; x += TILE_SIZE) {
+    //        for (int v = 0; v < TILE_SIZE; v++) {
+    //            for (int u = 0; u < TILE_SIZE; u++) {
+    //                int ix = x + u;
+    //                int iy = y + v;
+    //                glm::vec4 ray_end_ndc(((float)ix / (float)screen_width - 0.5f) * 2.0f,
+    //                                      ((float)iy / (float)screen_height - 0.5f) * 2.0f, 0.0,
+    //                                      1.0f);
+    //                glm::vec4 ray_end_world = ndc_to_world * ray_end_ndc;
+    //                glm::vec3 ray_end = glm::vec3(ray_end_world) / ray_end_world.w;
 
-                    /* NOTE: this normalize is very expensive! */
-                    glm::vec3 ray_dir = ray_end - cam_pos;
-                    if (ray_dir.x == 0) ray_dir.x = 0.000001f;
-                    if (ray_dir.y == 0) ray_dir.y = 0.000001f;
-                    if (ray_dir.z == 0) ray_dir.z = 0.000001f;
-                    Ray ray = Ray(cam_pos, glm::normalize(ray_dir));
+    //                /* NOTE: this normalize is very expensive! */
+    //                glm::vec3 ray_dir = ray_end - cam_pos;
+    //                if (ray_dir.x == 0) ray_dir.x = 0.000001f;
+    //                if (ray_dir.y == 0) ray_dir.y = 0.000001f;
+    //                if (ray_dir.z == 0) ray_dir.z = 0.000001f;
+    //                Ray ray = Ray(cam_pos, glm::normalize(ray_dir));
 
-                    // buffer[x + y * screen_width] = trace(cam_pos_4, ray_dir, box, box_model);
-                    buffer[ix + iy * screen_width] = trace(ray, &bvh);
-                }
-            }
-        }
-    }
+    //                // buffer[x + y * screen_width] = trace(cam_pos_4, ray_dir, box, box_model);
+    //                buffer[ix + iy * screen_width] = trace(ray, &bvh);
+    //            }
+    //        }
+    //    }
+    //}
 
     for (int y = 0; y < screen_height; y += TILE_SIZE) {
         for (int x = 0; x < screen_width; x += TILE_SIZE) {
@@ -197,71 +197,104 @@ void Renderer::render(float dt, float time, glm::vec3 cam_pos, glm::vec3 cam_dir
             // frustum.init(cam_pos, ray_dir, ray_tl, ray_tr, ray_br, ray_bl);
             //frustum.init(proj * view);
 
-            if (Ray(cam_pos, ray_dir).intersects_aabb(glm::vec3(0), glm::vec3(64)) != BIG_F32) {
-                for (int v = 0; v < TILE_SIZE; v++) {
-                    for (int u = 0; u < TILE_SIZE; u++) {
-                        buffer[(x + u) + (y + v) * screen_width] &= 0x0000FFFF;
-                    }
-                }
-            }
+            //if (Ray(cam_pos, ray_dir).intersects_aabb(glm::vec3(0), glm::vec3(64)) != BIG_F32) {
+            //    for (int v = 0; v < TILE_SIZE; v++) {
+            //        for (int u = 0; u < TILE_SIZE; u++) {
+            //            buffer[(x + u) + (y + v) * screen_width] &= 0x0000FFFF;
+            //        }
+            //    }
+            //}
 
-            if (frustum.intersect_sphere(glm::vec3(0), 32)) {
-                for (int v = 0; v < TILE_SIZE; v++) {
+            if (frustum.intersect_sphere(glm::vec3(0), 64)) {
+                /*for (int v = 0; v < TILE_SIZE; v++) {
                     for (int u = 0; u < TILE_SIZE; u++) {
                         buffer[(x + u) + (y + v) * screen_width] &= 0xFF0000FF;
                     }
+                }*/
+                for (int v = 0; v < TILE_SIZE; v++) {
+                    for (int u = 0; u < TILE_SIZE; u++) {
+                        int ix = x + u;
+                        int iy = y + v;
+                        glm::vec4 ray_end_ndc(((float)ix / (float)screen_width - 0.5f) * 2.0f,
+                                              ((float)iy / (float)screen_height - 0.5f) * 2.0f, 0.0,
+                                              1.0f);
+                        glm::vec4 ray_end_world = ndc_to_world * ray_end_ndc;
+                        glm::vec3 ray_end = glm::vec3(ray_end_world) / ray_end_world.w;
+
+                        /* NOTE: this normalize is very expensive! */
+                        glm::vec3 ray_dir = ray_end - cam_pos;
+                        if (ray_dir.x == 0) ray_dir.x = 0.000001f;
+                        if (ray_dir.y == 0) ray_dir.y = 0.000001f;
+                        if (ray_dir.z == 0) ray_dir.z = 0.000001f;
+                        Ray ray = Ray(cam_pos, glm::normalize(ray_dir));
+
+                        // buffer[x + y * screen_width] = trace(cam_pos_4, ray_dir, box, box_model);
+                        buffer[ix + iy * screen_width] = trace(ray, &bvh);
+                    }
                 }
             } else {
-                // buffer[x + y * screen_width] = 0x000000FF;
+                for (int v = 0; v < TILE_SIZE; v++) {
+                    for (int u = 0; u < TILE_SIZE; u++) {
+                        buffer[(x + u) + (y + v) * screen_width] = 0x101010FF;
+                    }
+                }
             }
         }
     }
 #else
     constexpr i32 TILE_SIZE = 16;
+    constexpr i32 PACKET_SIZE = 2; /* 2 x 2 */
 
     for (int y = 0; y < screen_height; y += TILE_SIZE) {
         for (int x = 0; x < screen_width; x += TILE_SIZE) {
-            for (int v = 0; v < TILE_SIZE; v++) {
-                for (int u = 0; u < TILE_SIZE; u++) {
-                    int ix = x + u;
-                    int iy = y + v;
-                    glm::vec4 ray_end_ndc(((float)ix / (float)screen_width - 0.5f) * 2.0f,
-                                          ((float)iy / (float)screen_height - 0.5f) * 2.0f, 0.0,
-                                          1.0f);
-                    glm::vec4 ray_end_world = ndc_to_world * ray_end_ndc;
-                    glm::vec3 ray_end = glm::vec3(ray_end_world) / ray_end_world.w;
+            for (int v = 0; v < TILE_SIZE; v += PACKET_SIZE) {
+                for (int u = 0; u < TILE_SIZE; u += PACKET_SIZE) {
+                    i32 ix = x + u, iy = y + v;
 
-                    /* NOTE: this normalize is very expensive! */
-                    glm::vec3 ray_dir = ray_end - cam_pos;
-                    if (ray_dir.x == 0) ray_dir.x = 0.000001f;
-                    if (ray_dir.y == 0) ray_dir.y = 0.000001f;
-                    if (ray_dir.z == 0) ray_dir.z = 0.000001f;
-                    Ray ray = Ray(cam_pos, glm::normalize(ray_dir));
+                    /* Create the four packet rays */
+                    glm::vec3 rays[4] = {1.0f / make_ray(cam_pos, ndc_to_world, ix, iy),
+                                         1.0f / make_ray(cam_pos, ndc_to_world, ix + 1, iy),
+                                         1.0f / make_ray(cam_pos, ndc_to_world, ix, iy + 1),
+                                         1.0f / make_ray(cam_pos, ndc_to_world, ix + 1, iy + 1)};
+                    /* Create the SIMD ray packet */
+                    RayPacket packet = RayPacket(cam_pos, rays[0], rays[1], rays[2], rays[3]);
 
-                    // buffer[x + y * screen_width] = trace(cam_pos_4, ray_dir, box, box_model);
-                    buffer[ix + iy * screen_width] = trace(ray, &bvh);
+                    /* Trace the packet */
+                    f128 dist = bvh.intersect(packet);
+                    if (_mm_movemask_ps(dist)) {
+                        buffer[ix + iy * screen_width] = 0xFFFFFFFF;
+                    } else {
+                        buffer[ix + iy * screen_width] = 0x101010FF;
+                    }
+                    // if (dist > ray.t) {
+                    //     return 0x101010FF;
+                    // } else {
+                    //     buffer[ix + iy * screen_width] =
+                    //         lerp_color(0xFFFFFFFF, 0x000000FF, dist / (ray.t + 10.0f));
+                    // }
                 }
             }
         }
     }
 #endif
-//#else
-//    for (int y = 0; y < screen_height; y++) {
-//        for (int x = 0; x < screen_width; x++) {
-//            glm::vec4 ray_end_ndc(((float)x / (float)screen_width - 0.5f) * 2.0f,
-//                                  ((float)y / (float)screen_height - 0.5f) * 2.0f, 0.0, 1.0f);
-//            glm::vec4 ray_end_world = ndc_to_world * ray_end_ndc;
-//            glm::vec3 ray_end = glm::vec3(ray_end_world) / ray_end_world.w;
-//
-//            /* NOTE: this normalize is very expensive! */
-//            glm::vec3 ray_dir = ray_end - cam_pos;
-//            Ray ray = Ray(cam_pos, glm::normalize(ray_dir));
-//
-//            // buffer[x + y * screen_width] = trace(cam_pos_4, ray_dir, box, box_model);
-//            buffer[x + y * screen_width] = trace(ray, &bvh);
-//        }
-//    }
-//#endif
+    // #else
+    //     for (int y = 0; y < screen_height; y++) {
+    //         for (int x = 0; x < screen_width; x++) {
+    //             glm::vec4 ray_end_ndc(((float)x / (float)screen_width - 0.5f) * 2.0f,
+    //                                   ((float)y / (float)screen_height - 0.5f) * 2.0f,
+    //                                   0.0, 1.0f);
+    //             glm::vec4 ray_end_world = ndc_to_world * ray_end_ndc;
+    //             glm::vec3 ray_end = glm::vec3(ray_end_world) / ray_end_world.w;
+    //
+    //             /* NOTE: this normalize is very expensive! */
+    //             glm::vec3 ray_dir = ray_end - cam_pos;
+    //             Ray ray = Ray(cam_pos, glm::normalize(ray_dir));
+    //
+    //             // buffer[x + y * screen_width] = trace(cam_pos_4, ray_dir, box, box_model);
+    //             buffer[x + y * screen_width] = trace(ray, &bvh);
+    //         }
+    //     }
+    // #endif
 
     // draw_aabb(glm::vec3(5.0f), glm::vec3(10.0f), 0x00FF00FF, view, proj);
 
